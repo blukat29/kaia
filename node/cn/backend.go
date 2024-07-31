@@ -47,6 +47,8 @@ import (
 	"github.com/kaiachain/kaia/datasync/downloader"
 	"github.com/kaiachain/kaia/event"
 	"github.com/kaiachain/kaia/governance"
+	"github.com/kaiachain/kaia/kaiax"
+	"github.com/kaiachain/kaia/kaiax/staking"
 	"github.com/kaiachain/kaia/networks/p2p"
 	"github.com/kaiachain/kaia/networks/rpc"
 	"github.com/kaiachain/kaia/node"
@@ -135,6 +137,7 @@ type CN struct {
 	lock sync.RWMutex // Protects the variadic fields (e.g. gas price)
 
 	components []interface{}
+	modules    []kaiax.BaseModule // KaiaX Modules to start and stop along with CN
 
 	governance    governance.Engine
 	supplyManager reward.SupplyManager
@@ -429,6 +432,10 @@ func New(ctx *node.ServiceContext, config *Config) (*CN, error) {
 	cn.addComponent(cn.ChainDB())
 	cn.addComponent(cn.engine)
 
+	if err := cn.SetupKaiaModules(); err != nil {
+		return nil, err
+	}
+
 	if config.AutoRestartFlag {
 		daemonPath := config.DaemonPathFlag
 		restartInterval := config.RestartTimeOutFlag
@@ -497,6 +504,36 @@ func (s *CN) Components() []interface{} {
 
 func (s *CN) SetComponents(component []interface{}) {
 	// do nothing
+}
+
+func (s *CN) SetupKaiaModules() error {
+	// Construct modules
+	var (
+		mStaking = staking.NewStakingModule()
+	)
+
+	// Initialize modules
+	if err := mStaking.Init(&staking.InitOpts{
+		ChainKv:     s.chainDB.GetMiscDB(),
+		ChainConfig: s.chainConfig,
+		Chain:       s.blockchain,
+		Gov:         s.governance,
+	}); err != nil {
+		return err
+	}
+
+	// Register BaseModules to CN
+	s.RegisterBaseModules(mStaking)
+
+	// TODO-kaiax: Register ConsensusModule to consensus engine
+	// TODO-kaiax: Register ExecutionModules to BlockChain
+	// TODO-kaiax: Register TxProcessModules to BlockChain
+	// TODO-kaiax: Register UnwindableModule to BlockChain
+	return nil
+}
+
+func (s *CN) RegisterBaseModules(modules ...kaiax.BaseModule) {
+	s.modules = append(s.modules, modules...)
 }
 
 // istanbul BFT
@@ -769,6 +806,13 @@ func (s *CN) Protocols() []p2p.Protocol {
 // Start implements node.Service, starting all internal goroutines needed by the
 // Kaia protocol implementation.
 func (s *CN) Start(srvr p2p.Server) error {
+	// Start internal KaiaX modules
+	for _, module := range s.modules {
+		if err := module.Start(); err != nil {
+			return err
+		}
+	}
+
 	// Start the bloom bits servicing goroutines
 	s.startBloomHandlers()
 
@@ -801,6 +845,10 @@ func (s *CN) Stop() error {
 	}
 
 	// Then stop everything else.
+	for _, module := range s.modules {
+		module.Stop()
+	}
+
 	s.bloomIndexer.Close()
 	close(s.closeBloomHandler)
 	s.txPool.Stop()

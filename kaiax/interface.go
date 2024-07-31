@@ -34,9 +34,8 @@ import (
 
 // BaseModule must be implemented by every kaiax module
 type BaseModule interface {
-	Initialized() bool
 	Start() error
-	Stop() error
+	Stop()
 }
 
 // A module can optionally implement below interfaces.
