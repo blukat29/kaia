@@ -47,6 +47,9 @@ import (
 	"github.com/kaiachain/kaia/datasync/downloader"
 	"github.com/kaiachain/kaia/event"
 	"github.com/kaiachain/kaia/governance"
+	"github.com/kaiachain/kaia/kaiax"
+	"github.com/kaiachain/kaia/kaiax/chaindatafetcher"
+	chaindatafetchertypes "github.com/kaiachain/kaia/kaiax/chaindatafetcher/types"
 	"github.com/kaiachain/kaia/networks/p2p"
 	"github.com/kaiachain/kaia/networks/rpc"
 	"github.com/kaiachain/kaia/node"
@@ -135,6 +138,7 @@ type CN struct {
 	lock sync.RWMutex // Protects the variadic fields (e.g. gas price)
 
 	components []interface{}
+	modules    []kaiax.BaseModule
 
 	governance    governance.Engine
 	supplyManager reward.SupplyManager
@@ -429,6 +433,10 @@ func New(ctx *node.ServiceContext, config *Config) (*CN, error) {
 	cn.addComponent(cn.ChainDB())
 	cn.addComponent(cn.engine)
 
+	if err := cn.SetupModules(); err != nil {
+		return nil, err
+	}
+
 	if config.AutoRestartFlag {
 		daemonPath := config.DaemonPathFlag
 		restartInterval := config.RestartTimeOutFlag
@@ -543,6 +551,21 @@ func CreateConsensusEngine(ctx *node.ServiceContext, config *Config, chainConfig
 		Governance:     gov,
 		NodeType:       nodetype,
 	})
+}
+
+func (s *CN) SetupModules() error {
+	// Construct modules
+	var (
+		modChaindatafetcher = chaindatafetcher.NewChainDataFetcher()
+	)
+
+	// Inter-link modules
+	modChaindatafetcher.Init(&chaindatafetchertypes.InitOpts{
+		Engine: s.engine,
+		Chain:  s.blockchain,
+	})
+
+	return nil
 }
 
 // APIs returns the collection of RPC services the ethereum package offers.
