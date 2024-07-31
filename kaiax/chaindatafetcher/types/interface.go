@@ -4,6 +4,7 @@ import (
 	"github.com/kaiachain/kaia/blockchain/types"
 	"github.com/kaiachain/kaia/consensus"
 	"github.com/kaiachain/kaia/kaiax"
+	"github.com/kaiachain/kaia/node/cn/tracers"
 )
 
 type BlockChain interface {
@@ -12,9 +13,9 @@ type BlockChain interface {
 
 type InitOpts struct {
 	// config   *ChainDataFetcherConfig
-	Engine consensus.Engine
-	Chain  BlockChain
-	// debugAPI *traceAPI
+	Engine   consensus.Engine
+	Chain    BlockChain
+	DebugAPI *tracers.API
 }
 
 // go:generate mockgen ...

@@ -4,10 +4,15 @@ import (
 	"github.com/kaiachain/kaia/blockchain/types"
 	"github.com/kaiachain/kaia/blockchain/vm"
 	chaindatafetchertypes "github.com/kaiachain/kaia/kaiax/chaindatafetcher/types"
+	"github.com/kaiachain/kaia/log"
 	"github.com/kaiachain/kaia/networks/rpc"
 )
 
-var _ chaindatafetchertypes.ChainDataFetcherModule = (*ChainDataFetcher)(nil)
+var (
+	_ chaindatafetchertypes.ChainDataFetcherModule = (*ChainDataFetcher)(nil)
+
+	logger = log.NewModuleLogger(log.ChainDataFetcher)
+)
 
 type ChainDataFetcher struct {
 }
@@ -25,10 +30,12 @@ func (c *ChainDataFetcher) Initialized() bool {
 }
 
 func (c *ChainDataFetcher) Start() error {
+	logger.Info("ChainDataFetcher started")
 	return nil
 }
 
 func (c *ChainDataFetcher) Stop() error {
+	logger.Info("ChainDataFetcher stopped")
 	return nil
 }
 

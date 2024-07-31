@@ -138,7 +138,7 @@ type CN struct {
 	lock sync.RWMutex // Protects the variadic fields (e.g. gas price)
 
 	components []interface{}
-	modules    []kaiax.BaseModule
+	modules    []kaiax.BaseModule // to start and stop modules
 
 	governance    governance.Engine
 	supplyManager reward.SupplyManager
@@ -426,16 +426,17 @@ func New(ctx *node.ServiceContext, config *Config) (*CN, error) {
 	gpoParams.Default = config.GasPrice
 
 	cn.APIBackend.gpo = gasprice.NewOracle(cn.APIBackend, gpoParams, cn.txPool, cn.governance)
+
+	if err := cn.SetupModules(); err != nil {
+		return nil, err
+	}
+
 	//@TODO Kaia add core component
 	cn.addComponent(cn.blockchain)
 	cn.addComponent(cn.txPool)
 	cn.addComponent(cn.APIs())
 	cn.addComponent(cn.ChainDB())
 	cn.addComponent(cn.engine)
-
-	if err := cn.SetupModules(); err != nil {
-		return nil, err
-	}
 
 	if config.AutoRestartFlag {
 		daemonPath := config.DaemonPathFlag
@@ -561,10 +562,18 @@ func (s *CN) SetupModules() error {
 
 	// Inter-link modules
 	modChaindatafetcher.Init(&chaindatafetchertypes.InitOpts{
-		Engine: s.engine,
-		Chain:  s.blockchain,
+
+		Engine:   s.engine,
+		Chain:    s.blockchain,
+		DebugAPI: tracers.NewAPI(s.APIBackend),
 	})
 
+	// Register BaseModules to CN
+	s.modules = []kaiax.BaseModule{
+		modChaindatafetcher,
+	}
+
+	// TODO: register other modules to respective callers e.g. ExecutionModule to BlockChain.
 	return nil
 }
 
@@ -792,6 +801,12 @@ func (s *CN) Protocols() []p2p.Protocol {
 // Start implements node.Service, starting all internal goroutines needed by the
 // Kaia protocol implementation.
 func (s *CN) Start(srvr p2p.Server) error {
+	for _, module := range s.modules {
+		if err := module.Start(); err != nil {
+			return err
+		}
+	}
+
 	// Start the bloom bits servicing goroutines
 	s.startBloomHandlers()
 
@@ -824,6 +839,12 @@ func (s *CN) Stop() error {
 	}
 
 	// Then stop everything else.
+	for _, module := range s.modules {
+		if err := module.Stop(); err != nil {
+			return err
+		}
+	}
+
 	s.bloomIndexer.Close()
 	close(s.closeBloomHandler)
 	s.txPool.Stop()
