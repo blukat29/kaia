@@ -5,7 +5,7 @@ import (
 
 	"github.com/kaiachain/kaia/common"
 	"github.com/kaiachain/kaia/params"
-	"gotest.tools/assert"
+	"github.com/stretchr/testify/assert"
 )
 
 type stakingInfoTC struct {
@@ -126,7 +126,7 @@ func generateStakingInfoTestCases() []stakingInfoTC {
 
 func TestStakingInfo(t *testing.T) {
 	for _, tc := range stakingInfoTCs {
-		assert.DeepEqual(t, tc.stakingInfo.ConsolidatedNodes(), tc.expectedConsolidated)
+		assert.Equal(t, tc.stakingInfo.ConsolidatedNodes(), tc.expectedConsolidated)
 		assert.Equal(t, tc.stakingInfo.Gini(params.DefaultMinimumStake.Uint64()), tc.expectedGini)
 	}
 }

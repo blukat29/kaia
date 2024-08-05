@@ -517,7 +517,6 @@ func (s *CN) SetupKaiaModules() error {
 		ChainKv:     s.chainDB.GetMiscDB(),
 		ChainConfig: s.chainConfig,
 		Chain:       s.blockchain,
-		Gov:         s.governance,
 	}); err != nil {
 		return err
 	}
@@ -533,6 +532,7 @@ func (s *CN) SetupKaiaModules() error {
 }
 
 func (s *CN) RegisterBaseModules(modules ...kaiax.BaseModule) {
+	// Add to s.modules so s.Start() and s.Stop() can call them.
 	s.modules = append(s.modules, modules...)
 }
 

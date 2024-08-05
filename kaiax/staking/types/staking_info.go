@@ -136,3 +136,37 @@ func computeGini(amounts sort.Float64Slice) float64 {
 	result = math.Round(result*100) / 100
 	return result
 }
+
+// Return the source block number to measure the staking amounts
+// that will be used for the given block number. (a.k.a. "staking block number")
+//
+// Pre-Kaia, the source block number is largest multiple of staking interval
+// that is more than a full staking interval before the given block number.
+// Post-Kaia, the source block number is the previous block.
+func SourceBlockNum(num, interval uint64, isKaia bool) uint64 {
+	if isKaia {
+		return sourceBlockNumPostKaia(num)
+	} else {
+		return sourceBlockNumPreKaia(num, interval)
+	}
+}
+
+func sourceBlockNumPreKaia(num, interval uint64) uint64 {
+	if num <= 2*interval {
+		return 0 // Just return genesis.
+	}
+
+	if (num % interval) == 0 {
+		return num - 2*interval
+	} else {
+		return num - interval - (num % interval)
+	}
+}
+
+func sourceBlockNumPostKaia(num uint64) uint64 {
+	if num == 0 {
+		return 0
+	} else {
+		return num - 1
+	}
+}

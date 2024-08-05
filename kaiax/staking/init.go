@@ -1,18 +1,30 @@
 package staking
 
 import (
+	"errors"
+	"fmt"
+	"math/big"
+
 	"github.com/kaiachain/kaia/accounts/abi/bind/backends"
-	moduletypes "github.com/kaiachain/kaia/kaiax/staking/types"
+	staking_types "github.com/kaiachain/kaia/kaiax/staking/types"
 	"github.com/kaiachain/kaia/log"
 	"github.com/kaiachain/kaia/params"
 	"github.com/kaiachain/kaia/storage/database"
 )
 
+type StakingInfo = staking_types.StakingInfo
+
 var (
-	_ (moduletypes.StakingModule) = (*StakingModule)(nil)
+	_ (staking_types.StakingModule) = (*StakingModule)(nil)
 
 	logger = log.NewModuleLogger(log.KaiaXStaking)
+
+	errInvalidABook = errors.New("invalid result from an AddressBook call")
 )
+
+func errCannotCallABook(inner error) error {
+	return fmt.Errorf("failed to make an AddressBook call: %w", inner)
+}
 
 type gov interface {
 	EffectiveParams(num uint64) (*params.GovParamSet, error)
@@ -26,14 +38,14 @@ type InitOpts struct {
 	ChainKv     database.Database
 	ChainConfig *params.ChainConfig
 	Chain       chain
-	Gov         gov
 }
 
 type StakingModule struct {
 	ChainKv     database.Database
 	ChainConfig *params.ChainConfig
-	Gov         gov
 	Chain       chain
+
+	stakingInterval uint64
 }
 
 func NewStakingModule() *StakingModule {
@@ -41,6 +53,12 @@ func NewStakingModule() *StakingModule {
 }
 
 func (s *StakingModule) Init(opts *InitOpts) error {
+	s.ChainKv = opts.ChainKv
+	s.ChainConfig = opts.ChainConfig
+	s.Chain = opts.Chain
+
+	// StakingInterval is first determined by the Genesis config, then never changes.
+	s.stakingInterval = opts.ChainConfig.Governance.Reward.StakingUpdateInterval
 	return nil
 }
 
@@ -51,4 +69,8 @@ func (s *StakingModule) Start() error {
 
 func (s *StakingModule) Stop() {
 	logger.Info("StakingModule stopped")
+}
+
+func (s *StakingModule) isKaia(num uint64) bool {
+	return s.ChainConfig.IsKaiaForkEnabled(new(big.Int).SetUint64(num))
 }
