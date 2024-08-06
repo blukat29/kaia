@@ -527,7 +527,10 @@ func (s *CN) SetupKaiaModules() error {
 	// TODO-kaiax: Register ConsensusModule to consensus engine
 	// TODO-kaiax: Register ExecutionModules to BlockChain
 	// TODO-kaiax: Register TxProcessModules to BlockChain
-	// TODO-kaiax: Register UnwindableModule to BlockChain
+
+	// TODO: remove type assertion
+	// Register UnwindableModule to BlockChain
+	s.BlockChain().(*blockchain.BlockChain).RegisterUnwindableModules(mStaking)
 	return nil
 }
 
