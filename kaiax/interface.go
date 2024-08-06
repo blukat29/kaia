@@ -43,7 +43,7 @@ type BaseModule interface {
 type JsonRpcModule interface {
 	// Exposes the module-specific APIs like governance_ namespace.
 	// Or you can implement a generic namespace like eth_ as a module.
-	API() []rpc.API
+	APIs() []rpc.API
 }
 
 // ConsensusModule consensus deals with states before block confirmation.

@@ -216,7 +216,7 @@ type BlockChain struct {
 	prefetchTxCh chan prefetchTx
 
 	// KaiaX modules
-	unwindableModules []kaiax.UnwindableModule
+	unwindableModules []kaiax.UnwindableModule // KaiaX modules that should be called during chain unwinding
 }
 
 // prefetchTx is used to prefetch transactions, when fetcher works.

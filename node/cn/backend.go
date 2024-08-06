@@ -137,7 +137,8 @@ type CN struct {
 	lock sync.RWMutex // Protects the variadic fields (e.g. gas price)
 
 	components []interface{}
-	modules    []kaiax.BaseModule // KaiaX Modules to start and stop along with CN
+	modules    []kaiax.BaseModule    // KaiaX Modules to start and stop along with CN
+	rpcModules []kaiax.JsonRpcModule // KaiaX Modules that provide JSON-RPC APIs
 
 	governance    governance.Engine
 	supplyManager reward.SupplyManager
@@ -524,6 +525,9 @@ func (s *CN) SetupKaiaModules() error {
 	// Register BaseModules to CN
 	s.RegisterBaseModules(mStaking)
 
+	// Register JsonRpcModules to CN
+	s.RegisterJsonRpcModules(mStaking)
+
 	// TODO-kaiax: Register ConsensusModule to consensus engine
 	// TODO-kaiax: Register ExecutionModules to BlockChain
 	// TODO-kaiax: Register TxProcessModules to BlockChain
@@ -537,6 +541,11 @@ func (s *CN) SetupKaiaModules() error {
 func (s *CN) RegisterBaseModules(modules ...kaiax.BaseModule) {
 	// Add to s.modules so s.Start() and s.Stop() can call them.
 	s.modules = append(s.modules, modules...)
+}
+
+func (s *CN) RegisterJsonRpcModules(modules ...kaiax.JsonRpcModule) {
+	// Add to s.modules so s.Start() and s.Stop() can call them.
+	s.rpcModules = append(s.rpcModules, modules...)
 }
 
 // istanbul BFT
@@ -733,6 +742,11 @@ func (s *CN) APIs() []rpc.API {
 			IPCOnly:   s.config.DisableUnsafeDebug,
 		},
 	}...)
+
+	// Append APIs exposed by JsonRpcModules
+	for _, module := range s.rpcModules {
+		apis = append(apis, module.APIs()...)
+	}
 
 	return apis
 }
