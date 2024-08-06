@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestGetStakingInfo_PostKaia(t *testing.T) {
+func TestGetStakingInfo_Uncached(t *testing.T) {
 	log.EnableLogForTest(log.LvlCrit, log.LvlWarn)
 	var (
 		db    = database.NewMemoryDBManager()

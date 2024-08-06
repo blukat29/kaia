@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/big"
 
+	lru "github.com/hashicorp/golang-lru"
 	"github.com/kaiachain/kaia/accounts/abi/bind/backends"
 	staking_types "github.com/kaiachain/kaia/kaiax/staking/types"
 	"github.com/kaiachain/kaia/log"
@@ -26,10 +27,6 @@ func errCannotCallABook(inner error) error {
 	return fmt.Errorf("failed to make an AddressBook call: %w", inner)
 }
 
-type gov interface {
-	EffectiveParams(num uint64) (*params.GovParamSet, error)
-}
-
 type chain interface {
 	backends.BlockChainForCaller
 }
@@ -45,11 +42,15 @@ type StakingModule struct {
 	ChainConfig *params.ChainConfig
 	Chain       chain
 
-	stakingInterval uint64
+	stakingInterval   uint64
+	cachedStakingInfo *lru.ARCCache
 }
 
 func NewStakingModule() *StakingModule {
-	return &StakingModule{}
+	cache, _ := lru.NewARC(128)
+	return &StakingModule{
+		cachedStakingInfo: cache,
+	}
 }
 
 func (s *StakingModule) Init(opts *InitOpts) error {

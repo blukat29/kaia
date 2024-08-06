@@ -17,45 +17,44 @@ const ( // Numeric Type IDs used by AddressBook.getAllAddress(), and in turn by 
 	CN_NODE_ID_TYPE         = 0
 	CN_STAKING_ADDRESS_TYPE = 1
 	CN_REWARD_ADDRESS_TYPE  = 2
-	POC_CONTRACT_TYPE       = 3 // The AddressBook's pocContractAddress field repurposed as KGF, KFF, KIF
+	POC_CONTRACT_TYPE       = 3 // The AddressBook's pocContractAddress field repurposed as PoC, KGF, KFF, KIF
 	KIR_CONTRACT_TYPE       = 4 // The AddressBook's kirContractAddress field repurposed as KIR, KCF, KEF
 )
 
 // Return the validator staking status used for processing the given block number.
 func (s *StakingModule) GetStakingInfo(num uint64) (*StakingInfo, error) {
-	if s.isKaia(num) {
-		return s.getPostKaiaCached(num)
-	} else {
-		return s.getPreKaiaCached(num)
+	var (
+		isKaia    = s.isKaia(num)
+		sourceNum = staking_types.SourceBlockNum(num, s.stakingInterval, isKaia)
+	)
+
+	// 1. Try memory cache
+	if si, ok := s.cachedStakingInfo.Get(sourceNum); ok {
+		return si.(*StakingInfo), nil
 	}
-}
 
-func (s *StakingModule) getPostKaiaCached(num uint64) (*StakingInfo, error) {
-	sourceNum := staking_types.SourceBlockNum(num, s.stakingInterval, true)
+	// 2. Try DB, cache it
+	if si := ReadStakingInfo(s.ChainKv, sourceNum); si != nil {
+		s.cachedStakingInfo.Add(sourceNum, si)
+		return si, nil
+	}
 
-	// TODO: memory cache
-	si, err := s.getUncached(sourceNum)
+	// 3. Read from state
+	si, err := s.getFromStateByNumber(sourceNum)
 	if err != nil {
 		return nil, err
 	}
 
-	return si, nil
-}
-
-func (s *StakingModule) getPreKaiaCached(num uint64) (*StakingInfo, error) {
-	sourceNum := staking_types.SourceBlockNum(num, s.stakingInterval, false)
-
-	// TODO: memory and db caches
-	si, err := s.getUncached(sourceNum)
-	if err != nil {
-		return nil, err
+	// 4. Write to DB, cache it
+	if isKaia {
+		WriteStakingInfo(s.ChainKv, sourceNum, si)
 	}
-
+	s.cachedStakingInfo.Add(sourceNum, si)
 	return si, nil
 }
 
 // Read the staking status from the blockchain state.
-func (s *StakingModule) getUncached(num uint64) (*StakingInfo, error) {
+func (s *StakingModule) getFromStateByNumber(num uint64) (*StakingInfo, error) {
 	header := s.Chain.GetHeaderByNumber(num)
 	if header == nil {
 		return nil, fmt.Errorf("failed to get header for block number %d", num)
@@ -65,13 +64,12 @@ func (s *StakingModule) getUncached(num uint64) (*StakingInfo, error) {
 		return nil, fmt.Errorf("failed to get state for block number %d: %v", num, err)
 	}
 
-	return s.getFromStateMultiCall(header, statedb)
+	return s.getFromState(header, statedb)
 }
 
-// A more efficient way using the MultiCall contract that fetches addresses and balances in one EVM call.
-// One caveat is that MultiCall contract only works after Cancun fork which has the PUSH0 opcode.
-// TODO: compile MultiCall without PUSH0 and use it from genesis block.
-func (s *StakingModule) getFromStateMultiCall(header *types.Header, statedb *state.StateDB) (*StakingInfo, error) {
+// Efficiently read addresses and balances from the AddressBook in one EVM call.
+// Works by temporarily injecting the MultiCallContract to a copied state.
+func (s *StakingModule) getFromState(header *types.Header, statedb *state.StateDB) (*StakingInfo, error) {
 	num := header.Number.Uint64()
 
 	// Bail out if AddressBook is not installed.

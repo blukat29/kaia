@@ -1,6 +1,7 @@
 package types
 
 import (
+	"encoding/json"
 	"math"
 	"sort"
 
@@ -41,8 +42,8 @@ type StakingInfo struct {
 	RewardAddrs      []common.Address `json:"councilRewardAddrs"`
 
 	// Treasury fund addresses
-	KEFAddr common.Address `json:"kefAddr"` // KEF contract address
-	KIFAddr common.Address `json:"kifAddr"` // KIF contract address
+	KEFAddr common.Address `json:"kefAddr"` // KEF contract address (or KCF, KIR)
+	KIFAddr common.Address `json:"kifAddr"` // KIF contract address (or KFF, KGF, PoC)
 
 	// Staking amounts
 	StakingAmounts []uint64 `json:"councilStakingAmounts"` // Staking amounts of each staking contracts, in KAIA, rounded down.
@@ -135,6 +136,63 @@ func computeGini(amounts sort.Float64Slice) float64 {
 	result := sumOfAbsoluteDifferences / subSum / float64(len(amounts))
 	result = math.Round(result*100) / 100
 	return result
+}
+
+// Legacy fields for backwards compatibility.
+// API users may use the legacy fields, hence custom MarshalJSON.
+// DB may contain the legacy fields, hence custom UnmarshalJSON.
+type legacyStakingInfoFields struct {
+	KIRAddr common.Address `json:"KIRAddr"` // KIRAddr -> KCFAddr from v1.10.2
+	PoCAddr common.Address `json:"PoCAddr"` // PoCAddr -> KFFAddr from v1.10.2
+	KCFAddr common.Address `json:"kcfAddr"` // KCFAddr -> KEFAddr from Kaia v1.0.0
+	KFFAddr common.Address `json:"kffAddr"` // KFFAddr -> KIFAddr from Kaia v1.0.0
+}
+
+func (si *StakingInfo) MarshalJSON() ([]byte, error) {
+	type OriginalFields StakingInfo // Type alias to avoid infinite recursion.
+	type Extended struct {
+		OriginalFields
+		legacyStakingInfoFields
+	}
+	var ext Extended
+	ext.OriginalFields = OriginalFields(*si)
+
+	// Copy into legacy fields.
+	ext.KIRAddr = si.KEFAddr
+	ext.PoCAddr = si.KIFAddr
+	ext.KCFAddr = si.KEFAddr
+	ext.KFFAddr = si.KIFAddr
+
+	return json.Marshal(ext)
+}
+
+func (si *StakingInfo) UnmarshalJSON(input []byte) error {
+	type OriginalFields StakingInfo // Type alias to avoid infinite recursion.
+	type Extended struct {
+		OriginalFields
+		legacyStakingInfoFields
+	}
+	var ext Extended
+	if err := json.Unmarshal(input, &ext); err != nil {
+		return err
+	}
+	*si = StakingInfo(ext.OriginalFields)
+
+	// If fund address fields are empty, try to fill them from the legacy fields.
+	if common.EmptyAddress(si.KEFAddr) && !common.EmptyAddress(ext.KCFAddr) {
+		si.KEFAddr = ext.KCFAddr
+	}
+	if common.EmptyAddress(si.KEFAddr) && !common.EmptyAddress(ext.KIRAddr) {
+		si.KEFAddr = ext.KIRAddr
+	}
+	if common.EmptyAddress(si.KIFAddr) && !common.EmptyAddress(ext.KFFAddr) {
+		si.KIFAddr = ext.KFFAddr
+	}
+	if common.EmptyAddress(si.KIFAddr) && !common.EmptyAddress(ext.PoCAddr) {
+		si.KIFAddr = ext.PoCAddr
+	}
+
+	return nil
 }
 
 // Return the source block number to measure the staking amounts

@@ -1,6 +1,7 @@
 package types
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/kaiachain/kaia/common"
@@ -124,11 +125,57 @@ func generateStakingInfoTestCases() []stakingInfoTC {
 	}
 }
 
-func TestStakingInfo(t *testing.T) {
+func TestComputedFields(t *testing.T) {
 	for _, tc := range stakingInfoTCs {
 		assert.Equal(t, tc.stakingInfo.ConsolidatedNodes(), tc.expectedConsolidated)
 		assert.Equal(t, tc.stakingInfo.Gini(params.DefaultMinimumStake.Uint64()), tc.expectedGini)
 	}
+}
+
+func TestStakingInfoJSON(t *testing.T) {
+	var (
+		// Data from DB may contain UseGini and Gini fields, and they should be ignored in UnmarshalJSON.
+		// Field names can be PascalCase or camelCase, but both must be recognized.
+		json_KIRPoC = `{"BlockNum":2880,"CouncilNodeAddrs":["0x159ae5ccda31b77475c64d88d4499c86f77b7ecc"],"CouncilStakingAddrs":["0x70e051c46ea76b9af9977407bb32192319907f9e"],"CouncilRewardAddrs":["0xd155d4277c99fa837c54a37a40a383f71a3d082a"],
+		"KIRAddr":"0x673003e5f9a852d3dc85b83d16ef62d45497fb96","PoCAddr":"0x576dc0c2afeb1661da3cf53a60e76dd4e32c7ab1","UseGini":false,"Gini":-1,"CouncilStakingAmounts":[5000000]}`
+		json_KCFKFF = `{"BlockNum":2880,"councilNodeAddrs":["0x159ae5ccda31b77475c64d88d4499c86f77b7ecc"],"councilStakingAddrs":["0x70e051c46ea76b9af9977407bb32192319907f9e"],"councilRewardAddrs":["0xd155d4277c99fa837c54a37a40a383f71a3d082a"],
+		"kcfAddr":"0x673003e5f9a852d3dc85b83d16ef62d45497fb96","kffAddr":"0x576dc0c2afeb1661da3cf53a60e76dd4e32c7ab1","UseGini":false,"Gini":-1,"councilStakingAmounts":[5000000]}`
+		json_KEFKIF = `{"blockNum":2880,"councilNodeAddrs":["0x159ae5ccda31b77475c64d88d4499c86f77b7ecc"],"councilStakingAddrs":["0x70e051c46ea76b9af9977407bb32192319907f9e"],"councilRewardAddrs":["0xd155d4277c99fa837c54a37a40a383f71a3d082a"],
+		"kefAddr":"0x673003e5f9a852d3dc85b83d16ef62d45497fb96","kifAddr":"0x576dc0c2afeb1661da3cf53a60e76dd4e32c7ab1","UseGini":false,"Gini":-1,"councilStakingAmounts":[5000000]}`
+
+		obj = &StakingInfo{
+			SourceBlockNum:   2880,
+			NodeIds:          []common.Address{common.HexToAddress("0x159ae5ccda31b77475c64d88d4499c86f77b7ecc")},
+			StakingContracts: []common.Address{common.HexToAddress("0x70e051c46ea76b9af9977407bb32192319907f9e")},
+			RewardAddrs:      []common.Address{common.HexToAddress("0xd155d4277c99fa837c54a37a40a383f71a3d082a")},
+			KEFAddr:          common.HexToAddress("0x673003e5f9a852d3dc85b83d16ef62d45497fb96"),
+			KIFAddr:          common.HexToAddress("0x576dc0c2afeb1661da3cf53a60e76dd4e32c7ab1"),
+			StakingAmounts:   []uint64{5000000},
+		}
+
+		// Output does not contain Gini. The Gini field may be attached by kaia_getStakingInfo API, but not in MarshalJSON.
+		// Output contains all kinds of fund address fields.
+		// Output field names are camelCase by default. Some are kept PascalCase for compatibility.
+		json_output = `{"blockNum":2880,"councilNodeAddrs":["0x159ae5ccda31b77475c64d88d4499c86f77b7ecc"],"councilStakingAddrs":["0x70e051c46ea76b9af9977407bb32192319907f9e"],"councilRewardAddrs":["0xd155d4277c99fa837c54a37a40a383f71a3d082a"],
+		"KIRAddr":"0x673003e5f9a852d3dc85b83d16ef62d45497fb96","PoCAddr":"0x576dc0c2afeb1661da3cf53a60e76dd4e32c7ab1",
+		"kcfAddr":"0x673003e5f9a852d3dc85b83d16ef62d45497fb96","kffAddr":"0x576dc0c2afeb1661da3cf53a60e76dd4e32c7ab1",
+		"kefAddr":"0x673003e5f9a852d3dc85b83d16ef62d45497fb96","kifAddr":"0x576dc0c2afeb1661da3cf53a60e76dd4e32c7ab1","councilStakingAmounts":[5000000]}`
+	)
+
+	// UnmarshalJSON should result in the same struct.
+	var si StakingInfo
+	assert.NoError(t, si.UnmarshalJSON([]byte(json_KIRPoC)))
+	assert.Equal(t, obj, &si)
+	assert.NoError(t, si.UnmarshalJSON([]byte(json_KCFKFF)))
+	assert.Equal(t, obj, &si)
+	assert.NoError(t, si.UnmarshalJSON([]byte(json_KEFKIF)))
+	assert.Equal(t, obj, &si)
+
+	// MarshalJSON should yield the correct answer.
+	b, err := obj.MarshalJSON()
+	fmt.Println(string(b))
+	assert.NoError(t, err)
+	assert.JSONEq(t, json_output, string(b))
 }
 
 func TestComputeGini(t *testing.T) {
