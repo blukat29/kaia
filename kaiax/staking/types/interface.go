@@ -6,7 +6,6 @@ import (
 
 type StakingModule interface {
 	kaiax.BaseModule
-	kaiax.ExecutionModule
 	kaiax.UnwindableModule
 
 	GetStakingInfo(num uint64) (*StakingInfo, error)

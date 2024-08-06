@@ -20,7 +20,8 @@ var (
 
 	logger = log.NewModuleLogger(log.KaiaXStaking)
 
-	errInvalidABook = errors.New("invalid result from an AddressBook call")
+	errZeroStakingInterval = errors.New("staking interval cannot be zero")
+	errInvalidABookResult  = errors.New("invalid result from an AddressBook call")
 )
 
 func errCannotCallABook(inner error) error {
@@ -60,6 +61,9 @@ func (s *StakingModule) Init(opts *InitOpts) error {
 
 	// StakingInterval is first determined by the Genesis config, then never changes.
 	s.stakingInterval = opts.ChainConfig.Governance.Reward.StakingUpdateInterval
+	if s.stakingInterval == 0 {
+		return errZeroStakingInterval
+	}
 	return nil
 }
 

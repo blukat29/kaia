@@ -51,3 +51,9 @@ func WriteStakingInfo(db database.Database, num uint64, si *StakingInfo) {
 		logger.Crit("Failed to write StakingInfo", "num", num, "err", err)
 	}
 }
+
+func DeleteStakingInfo(db database.Database, num uint64) {
+	if err := db.Delete(makeKey(stakingInfoPrefix, num)); err != nil {
+		logger.Crit("Failed to delete StakingInfo", "num", num, "err", err)
+	}
+}

@@ -34,9 +34,13 @@ func (s *StakingModule) GetStakingInfo(num uint64) (*StakingInfo, error) {
 	}
 
 	// 2. Try DB, cache it
-	if si := ReadStakingInfo(s.ChainKv, sourceNum); si != nil {
-		s.cachedStakingInfo.Add(sourceNum, si)
-		return si, nil
+	// Note that StakingInfo schema is not used since Kaia because post-Kaia staking info
+	// is calculated every block, so persisting them would be inefficient.
+	if isKaia {
+		if si := ReadStakingInfo(s.ChainKv, sourceNum); si != nil {
+			s.cachedStakingInfo.Add(sourceNum, si)
+			return si, nil
+		}
 	}
 
 	// 3. Read from state
@@ -101,7 +105,7 @@ func parseCallResult(num uint64, types []uint8, addrs []common.Address, amounts 
 	}
 	if len(types) != len(addrs) {
 		logger.Error("length of type list and address list differ", "sourceNum", num, "typeLen", len(types), "addrLen", len(addrs))
-		return nil, errInvalidABook
+		return nil, errInvalidABookResult
 	}
 
 	// Collect the results to StakingInfo fields.
@@ -129,7 +133,7 @@ func parseCallResult(num uint64, types []uint8, addrs []common.Address, amounts 
 			kefAddr = addrs[i]
 		default:
 			logger.Error("unknown type", "sourceNum", num, "type", ty)
-			return nil, errInvalidABook
+			return nil, errInvalidABookResult
 		}
 	}
 	for i, a := range amounts {

@@ -86,7 +86,8 @@ type TxProcessModule interface {
 // associated to block numbers. If a module maintains block-number-dependent
 // data, the module should implement UnwindableModule.
 type UnwindableModule interface {
-	// Additional actions to be taken when the head block is rewinded
+	// Actions to be taken when the head block is rewinded by one block, to `num-1`.
+	// i.e. Delete data associated with the block number `num`.
 	Unwind(num uint64) error
 }
 
