@@ -416,3 +416,7 @@ func (b *CNAPIBackend) GetTotalSupply(ctx context.Context, blockNrOrHash rpc.Blo
 	}
 	return b.cn.supplyManager.GetTotalSupply(block.NumberU64())
 }
+
+func (b *CNAPIBackend) RevertLastNum(ctx context.Context, num uint64) {
+	b.cn.supplyManager.RevertLastNum(num)
+}

@@ -1165,6 +1165,11 @@ var klayMethods = [
 		inputFormatter: [web3._extend.formatters.inputBlockNumberFormatter, function (val) { return !!val; }]
 	}),
 	new web3._extend.Method({
+		name: 'revertLastNum',
+		call: 'klay_revertLastNum',
+		params: 1,
+	}),
+	new web3._extend.Method({
 		name: 'getProof',
 		call: 'klay_getProof',
 		params: 3,

@@ -72,6 +72,8 @@ type SupplyManager interface {
 	// GetTotalSupply returns the total supply amounts at the given block number,
 	// broken down by minted amount and burnt amounts of each methods.
 	GetTotalSupply(num uint64) (*TotalSupply, error)
+
+	RevertLastNum(num uint64)
 }
 
 type TotalSupply struct {
@@ -132,6 +134,12 @@ func (sm *supplyManager) Stop() {
 	if sm.chainHeadSub != nil {
 		sm.chainHeadSub.Unsubscribe()
 	}
+}
+
+func (sm *supplyManager) RevertLastNum(num uint64) {
+	sm.Stop()
+	sm.db.WriteLastAccRewardBlockNumber(num)
+	sm.Start()
 }
 
 func (sm *supplyManager) GetAccReward(num uint64) (*database.AccReward, error) {

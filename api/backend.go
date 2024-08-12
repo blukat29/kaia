@@ -63,6 +63,7 @@ type Backend interface {
 	Engine() consensus.Engine
 	FeeHistory(ctx context.Context, blockCount int, lastBlock rpc.BlockNumber, rewardPercentiles []float64) (*big.Int, [][]*big.Int, []*big.Int, []float64, error)
 	GetTotalSupply(ctx context.Context, blockNrOrHash rpc.BlockNumberOrHash) (*reward.TotalSupply, error)
+	RevertLastNum(ctx context.Context, num uint64)
 
 	// BlockChain API
 	SetHead(number uint64) error
