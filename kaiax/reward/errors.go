@@ -16,12 +16,12 @@
 
 package reward
 
-import "github.com/kaiachain/kaia/kaiax"
+import "fmt"
 
-//go:generate mockgen -destination=mock/module.go -package=mock github.com/kaiachain/kaia/kaiax/reward RewardModule
-type RewardModule interface {
-	kaiax.BaseModule
-	kaiax.JsonRpcModule
-	kaiax.ConsensusModule
-	kaiax.TxProcessModule
+func errMalformedRewardRatio(ratio string) error {
+	return fmt.Errorf("malformed reward.ratio: %s", ratio)
+}
+
+func errMalformedRewardKip82Ratio(ratio string) error {
+	return fmt.Errorf("malformed reward.kip82ratio: %s", ratio)
 }
