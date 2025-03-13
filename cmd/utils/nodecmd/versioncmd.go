@@ -23,9 +23,14 @@
 package nodecmd
 
 import (
+	"bytes"
 	"fmt"
+	"log"
 
+	"github.com/kaiachain/kaia/blockchain/types"
 	"github.com/kaiachain/kaia/params"
+	"github.com/kaiachain/kaia/rlp"
+	"github.com/kaiachain/kaia/storage/database"
 	"github.com/urfave/cli/v2"
 )
 
@@ -60,4 +65,33 @@ func version(ctx *cli.Context) error {
 // GetGitCommit returns gitCommit set by linker flags.
 func GetGitCommit() string {
 	return gitCommit
+}
+
+var ScanCommand = &cli.Command{
+	Action:    scan,
+	Name:      "scan",
+	Usage:     "Scan the node",
+	ArgsUsage: " ",
+	Category:  "MISCELLANEOUS COMMANDS",
+}
+
+func scan(ctx *cli.Context) error {
+	stack := MakeFullNode(ctx)
+	db := stack.OpenDatabase(getConfig(ctx))
+	for i := uint64(0); i < 1000000; i++ {
+		printBlock(db, i)
+	}
+	return nil
+}
+
+func printBlock(db database.DBManager, num uint64) {
+	h := db.ReadCanonicalHash(num)
+	data := db.ReadBodyRLP(h, num)
+	body := new(types.Body)
+	if err := rlp.Decode(bytes.NewReader(data), body); err != nil {
+		log.Fatal(err)
+	}
+	for _, tx := range body.Transactions {
+		fmt.Printf("%x\n", tx.Hash())
+	}
 }
