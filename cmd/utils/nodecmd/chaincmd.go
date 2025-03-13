@@ -34,7 +34,6 @@ import (
 	"github.com/kaiachain/kaia/blockchain/types"
 	"github.com/kaiachain/kaia/cmd/utils"
 	"github.com/kaiachain/kaia/common"
-	"github.com/kaiachain/kaia/common/hexutil"
 	headergov_impl "github.com/kaiachain/kaia/kaiax/gov/headergov/impl"
 	"github.com/kaiachain/kaia/log"
 	"github.com/kaiachain/kaia/params"
@@ -306,19 +305,15 @@ func dbGet(ctx *cli.Context) error {
 	fmt.Printf("%x\n", chainDB.ReadHeadHeaderHash())
 	fmt.Printf("%x\n", chainDB.ReadCanonicalHash(1))
 
-	for i := uint64(80000000); i < 80000010; i++ {
+	for i := uint64(141680500); i < 999999999; i++ {
 		printBlock(chainDB, i)
 	}
 
 	return nil
 }
 
-var targets = [][]byte{
-	hexutil.MustDecode(""),
-}
-
 var targetAddr = common.HexToAddress(
-	"0xcf56f77b34873e1a7cf9d2b34bc8f7769914888b",
+	"0x7bdd84820064d632c6bdbdf608f0bccacdc37966",
 )
 
 func printBlock(dbm database.DBManager, num uint64) {
