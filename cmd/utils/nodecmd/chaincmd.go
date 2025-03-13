@@ -334,13 +334,13 @@ func printBlock(dbm database.DBManager, num uint64) {
 	for _, tx := range b.Transactions {
 		if tx.Type().IsAccountUpdate() && tx.AccountKey() != nil {
 			ak := tx.AccountKey()
-			//fmt.Printf("!! %d %x %x\n", num, tx.Hash(), ak.String())
+			fmt.Printf("AU %d %x %x\n", num, tx.Hash(), ak.String())
 
 			if ak.Type() == accountkey.AccountKeyTypeWeightedMultiSig {
 				weightedKey := ak.(*accountkey.AccountKeyWeightedMultiSig)
 				for _, key := range weightedKey.Keys {
 					pub := key.Key
-					fmt.Printf("!! %d %x %x %x\n", num, tx.Hash(), pub.String(), crypto.PubkeyToAddress(ecdsa.PublicKey(*pub)))
+					fmt.Printf("MS %d %x %x %x\n", num, tx.Hash(), pub.String(), crypto.PubkeyToAddress(ecdsa.PublicKey(*pub)))
 				}
 			}
 		}
