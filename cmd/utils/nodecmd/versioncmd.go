@@ -84,17 +84,34 @@ var ScanCommand = &cli.Command{
 }
 
 func scan(ctx *cli.Context) error {
-	stack := MakeFullNode(ctx)
-	db := stack.OpenDatabase(getConfig(ctx))
+	var (
+		stack              = MakeFullNode(ctx)
+		parallelDBWrite    = !ctx.Bool(utils.NoParallelDBWriteFlag.Name)
+		singleDB           = ctx.Bool(utils.SingleDBFlag.Name)
+		numStateTrieShards = ctx.Uint(utils.NumStateTrieShardsFlag.Name)
+		datadir            = ctx.String(utils.DataDirFlag.Name)
+	)
+	dbtype := database.DBType(ctx.String(utils.DbTypeFlag.Name)).ToValid()
+	if len(dbtype) == 0 {
+		logger.Crit("invalid dbtype", "dbtype", ctx.String(utils.DbTypeFlag.Name))
+	}
+	dbc := &database.DBConfig{
+		Dir: datadir, DBType: dbtype, ParallelDBWrite: parallelDBWrite,
+		SingleDB: singleDB, NumStateTrieShards: numStateTrieShards,
+		LevelDBCacheSize: 0, PebbleDBCacheSize: 0, OpenFilesLimit: 0,
+	}
+	dbm := stack.OpenDatabase(dbc)
+	defer dbm.Close()
+
 	for i := uint64(0); i < 1000000; i++ {
-		printBlock(db, i)
+		printBlock(dbm, i)
 	}
 	return nil
 }
 
-func printBlock(db database.DBManager, num uint64) {
-	h := db.ReadCanonicalHash(num)
-	data := db.ReadBodyRLP(h, num)
+func printBlock(dbm database.DBManager, num uint64) {
+	h := dbm.ReadCanonicalHash(num)
+	data := dbm.ReadBodyRLP(h, num)
 	body := new(types.Body)
 	if err := rlp.Decode(bytes.NewReader(data), body); err != nil {
 		log.Fatal(err)
