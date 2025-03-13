@@ -28,6 +28,7 @@ import (
 	"log"
 
 	"github.com/kaiachain/kaia/blockchain/types"
+	"github.com/kaiachain/kaia/cmd/utils"
 	"github.com/kaiachain/kaia/params"
 	"github.com/kaiachain/kaia/rlp"
 	"github.com/kaiachain/kaia/storage/database"
@@ -72,7 +73,11 @@ var ScanCommand = &cli.Command{
 	Name:      "scan",
 	Usage:     "Scan the node",
 	ArgsUsage: " ",
-	Category:  "MISCELLANEOUS COMMANDS",
+	Flags: []cli.Flag{
+		utils.DataDirFlag,
+		utils.ChainDataDirFlag,
+	},
+	Category: "MISCELLANEOUS COMMANDS",
 }
 
 func scan(ctx *cli.Context) error {
