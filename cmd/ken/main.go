@@ -51,6 +51,7 @@ func init() {
 		// See utils/nodecmd/chaincmd.go:
 		nodecmd.InitCommand,
 		nodecmd.DumpGenesisCommand,
+		nodecmd.DbGetCommand,
 
 		// See utils/nodecmd/accountcmd.go
 		nodecmd.AccountCommand,
