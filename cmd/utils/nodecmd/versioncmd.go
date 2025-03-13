@@ -74,6 +74,9 @@ var ScanCommand = &cli.Command{
 	Usage:     "Scan the node",
 	ArgsUsage: " ",
 	Flags: []cli.Flag{
+		utils.DbTypeFlag,
+		utils.SingleDBFlag,
+		utils.NumStateTrieShardsFlag,
 		utils.DataDirFlag,
 		utils.ChainDataDirFlag,
 	},
