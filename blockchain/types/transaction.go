@@ -344,6 +344,19 @@ func (tx *Transaction) AccessList() AccessList {
 	return nil
 }
 
+func (tx *Transaction) AccountKey() accountkey.AccountKey {
+	switch data := tx.data.(type) {
+	case *TxInternalDataAccountUpdate:
+		return data.Key
+	case *TxInternalDataFeeDelegatedAccountUpdate:
+		return data.Key
+	case *TxInternalDataFeeDelegatedAccountUpdateWithRatio:
+		return data.Key
+	default:
+		return nil
+	}
+}
+
 func (tx *Transaction) AuthList() []SetCodeAuthorization {
 	if tx.Type() == TxTypeEthereumSetCode {
 		te := tx.GetTxInternalData().(*TxInternalDataEthereumSetCode)

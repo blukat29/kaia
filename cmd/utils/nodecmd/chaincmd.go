@@ -24,16 +24,20 @@ package nodecmd
 
 import (
 	"bytes"
+	"crypto/ecdsa"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/kaiachain/kaia/blockchain"
 	"github.com/kaiachain/kaia/blockchain/types"
+	"github.com/kaiachain/kaia/blockchain/types/accountkey"
 	"github.com/kaiachain/kaia/cmd/utils"
 	"github.com/kaiachain/kaia/common"
+	"github.com/kaiachain/kaia/crypto"
 	headergov_impl "github.com/kaiachain/kaia/kaiax/gov/headergov/impl"
 	"github.com/kaiachain/kaia/log"
 	"github.com/kaiachain/kaia/params"
@@ -285,6 +289,10 @@ func ValidateGenesisConfig(g *blockchain.Genesis) error {
 }
 
 func dbGet(ctx *cli.Context) error {
+	startNum, _ := strconv.Atoi(ctx.Args().First())
+	endNum, _ := strconv.Atoi(ctx.Args().Get(1))
+	fmt.Printf("searching between %d and %d\n", startNum, endNum)
+
 	stack := MakeFullNode(ctx)
 	parallelDBWrite := !ctx.Bool(utils.NoParallelDBWriteFlag.Name)
 	singleDB := ctx.Bool(utils.SingleDBFlag.Name)
@@ -305,7 +313,7 @@ func dbGet(ctx *cli.Context) error {
 	fmt.Printf("%x\n", chainDB.ReadHeadHeaderHash())
 	fmt.Printf("%x\n", chainDB.ReadCanonicalHash(1))
 
-	for i := uint64(141680500); i < 999999999; i++ {
+	for i := uint64(startNum); i <= uint64(endNum); i++ {
 		printBlock(chainDB, i)
 	}
 
@@ -324,9 +332,17 @@ func printBlock(dbm database.DBManager, num uint64) {
 		logger.Crit("decode error", "err", err)
 	}
 	for _, tx := range b.Transactions {
-		to := tx.To()
-		if to != nil && *to == targetAddr {
-			fmt.Printf("!! %d %x %x\n", num, tx.Hash(), tx.Data())
+		if tx.Type().IsAccountUpdate() && tx.AccountKey() != nil {
+			ak := tx.AccountKey()
+			//fmt.Printf("!! %d %x %x\n", num, tx.Hash(), ak.String())
+
+			if ak.Type() == accountkey.AccountKeyTypeWeightedMultiSig {
+				weightedKey := ak.(*accountkey.AccountKeyWeightedMultiSig)
+				for _, key := range weightedKey.Keys {
+					pub := key.Key
+					fmt.Printf("!! %d %x %x %x\n", num, tx.Hash(), pub.String(), crypto.PubkeyToAddress(ecdsa.PublicKey(*pub)))
+				}
+			}
 		}
 	}
 }
