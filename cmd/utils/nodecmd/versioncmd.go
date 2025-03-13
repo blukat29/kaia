@@ -23,15 +23,9 @@
 package nodecmd
 
 import (
-	"bytes"
 	"fmt"
-	"log"
 
-	"github.com/kaiachain/kaia/blockchain/types"
-	"github.com/kaiachain/kaia/cmd/utils"
 	"github.com/kaiachain/kaia/params"
-	"github.com/kaiachain/kaia/rlp"
-	"github.com/kaiachain/kaia/storage/database"
 	"github.com/urfave/cli/v2"
 )
 
@@ -66,57 +60,4 @@ func version(ctx *cli.Context) error {
 // GetGitCommit returns gitCommit set by linker flags.
 func GetGitCommit() string {
 	return gitCommit
-}
-
-var ScanCommand = &cli.Command{
-	Action:    scan,
-	Name:      "scan",
-	Usage:     "Scan the node",
-	ArgsUsage: " ",
-	Flags: []cli.Flag{
-		utils.DbTypeFlag,
-		utils.SingleDBFlag,
-		utils.NumStateTrieShardsFlag,
-		utils.DataDirFlag,
-		utils.ChainDataDirFlag,
-	},
-	Category: "MISCELLANEOUS COMMANDS",
-}
-
-func scan(ctx *cli.Context) error {
-	var (
-		stack              = MakeFullNode(ctx)
-		parallelDBWrite    = !ctx.Bool(utils.NoParallelDBWriteFlag.Name)
-		singleDB           = ctx.Bool(utils.SingleDBFlag.Name)
-		numStateTrieShards = ctx.Uint(utils.NumStateTrieShardsFlag.Name)
-		datadir            = ctx.String(utils.DataDirFlag.Name)
-	)
-	dbtype := database.DBType(ctx.String(utils.DbTypeFlag.Name)).ToValid()
-	if len(dbtype) == 0 {
-		logger.Crit("invalid dbtype", "dbtype", ctx.String(utils.DbTypeFlag.Name))
-	}
-	dbc := &database.DBConfig{
-		Dir: datadir, DBType: dbtype, ParallelDBWrite: parallelDBWrite,
-		SingleDB: singleDB, NumStateTrieShards: numStateTrieShards,
-		LevelDBCacheSize: 0, PebbleDBCacheSize: 0, OpenFilesLimit: 0,
-	}
-	dbm := stack.OpenDatabase(dbc)
-	defer dbm.Close()
-
-	for i := uint64(0); i < 1000000; i++ {
-		printBlock(dbm, i)
-	}
-	return nil
-}
-
-func printBlock(dbm database.DBManager, num uint64) {
-	h := dbm.ReadCanonicalHash(num)
-	data := dbm.ReadBodyRLP(h, num)
-	body := new(types.Body)
-	if err := rlp.Decode(bytes.NewReader(data), body); err != nil {
-		log.Fatal("decode error", "err", err)
-	}
-	for _, tx := range body.Transactions {
-		fmt.Printf("%x\n", tx.Hash())
-	}
 }

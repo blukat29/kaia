@@ -23,6 +23,7 @@
 package nodecmd
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -32,9 +33,12 @@ import (
 	"github.com/kaiachain/kaia/blockchain"
 	"github.com/kaiachain/kaia/blockchain/types"
 	"github.com/kaiachain/kaia/cmd/utils"
+	"github.com/kaiachain/kaia/common"
+	"github.com/kaiachain/kaia/common/hexutil"
 	headergov_impl "github.com/kaiachain/kaia/kaiax/gov/headergov/impl"
 	"github.com/kaiachain/kaia/log"
 	"github.com/kaiachain/kaia/params"
+	"github.com/kaiachain/kaia/rlp"
 	"github.com/kaiachain/kaia/storage/database"
 	"github.com/urfave/cli/v2"
 )
@@ -302,5 +306,32 @@ func dbGet(ctx *cli.Context) error {
 	fmt.Printf("%x\n", chainDB.ReadHeadHeaderHash())
 	fmt.Printf("%x\n", chainDB.ReadCanonicalHash(1))
 
+	for i := uint64(80000000); i < 80000010; i++ {
+		printBlock(chainDB, i)
+	}
+
 	return nil
+}
+
+var targets = [][]byte{
+	hexutil.MustDecode(""),
+}
+
+var targetAddr = common.HexToAddress(
+	"0xcf56f77b34873e1a7cf9d2b34bc8f7769914888b",
+)
+
+func printBlock(dbm database.DBManager, num uint64) {
+	h := dbm.ReadCanonicalHash(num)
+	r := dbm.ReadBodyRLP(h, num)
+	b := new(types.Body)
+	if err := rlp.Decode(bytes.NewReader(r), b); err != nil {
+		logger.Crit("decode error", "err", err)
+	}
+	for _, tx := range b.Transactions {
+		to := tx.To()
+		if to != nil && *to == targetAddr {
+			fmt.Printf("!! %d %x %x\n", num, tx.Hash(), tx.Data())
+		}
+	}
 }

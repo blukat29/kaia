@@ -62,7 +62,6 @@ func init() {
 
 		// See utils/nodecmd/versioncmd.go:
 		nodecmd.VersionCommand,
-		nodecmd.ScanCommand,
 
 		// See utils/nodecmd/dumpconfigcmd.go:
 		nodecmd.GetDumpConfigCommand(utils.KenNodeFlags(), utils.CommonRPCFlags),
