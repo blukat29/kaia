@@ -334,15 +334,27 @@ func printBlock(dbm database.DBManager, num uint64) {
 	for _, tx := range b.Transactions {
 		if tx.Type().IsAccountUpdate() && tx.AccountKey() != nil {
 			ak := tx.AccountKey()
-			fmt.Printf("AU %d %x %x\n", num, tx.Hash(), ak.String())
-
-			if ak.Type() == accountkey.AccountKeyTypeWeightedMultiSig {
-				weightedKey := ak.(*accountkey.AccountKeyWeightedMultiSig)
-				for _, key := range weightedKey.Keys {
-					pub := key.Key
-					fmt.Printf("MS %d %x %x %x\n", num, tx.Hash(), pub.String(), crypto.PubkeyToAddress(ecdsa.PublicKey(*pub)))
-				}
-			}
+			fmt.Printf("AU %d %x %s\n", num, tx.Hash(), ak.String())
+			printKey("AU", ak)
 		}
 	}
+}
+
+func printKey(prefix string, accountKey accountkey.AccountKey) {
+	switch ak := accountKey.(type) {
+	case *accountkey.AccountKeyWeightedMultiSig:
+		for _, key := range ak.Keys {
+			fmt.Printf("%s MS %s\n", prefix, stringifyPub(key.Key))
+		}
+	case *accountkey.AccountKeyRoleBased:
+		for _, key := range *ak {
+			printKey(prefix+" RB", key)
+		}
+	case *accountkey.AccountKeyPublic:
+		fmt.Printf("%s PK %s\n", prefix, stringifyPub(ak.PublicKeySerializable))
+	}
+}
+
+func stringifyPub(pub *accountkey.PublicKeySerializable) string {
+	return fmt.Sprintf("%s %s", pub.String(), crypto.PubkeyToAddress(ecdsa.PublicKey(*pub)))
 }
