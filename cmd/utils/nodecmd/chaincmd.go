@@ -356,5 +356,5 @@ func printKey(prefix string, accountKey accountkey.AccountKey) {
 }
 
 func stringifyPub(pub *accountkey.PublicKeySerializable) string {
-	return fmt.Sprintf("%s %s", pub.String(), crypto.PubkeyToAddress(ecdsa.PublicKey(*pub)))
+	return fmt.Sprintf("%s %x", pub.String(), crypto.PubkeyToAddress(ecdsa.PublicKey(*pub)))
 }
