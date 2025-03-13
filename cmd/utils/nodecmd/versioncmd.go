@@ -114,7 +114,7 @@ func printBlock(dbm database.DBManager, num uint64) {
 	data := dbm.ReadBodyRLP(h, num)
 	body := new(types.Body)
 	if err := rlp.Decode(bytes.NewReader(data), body); err != nil {
-		log.Fatal(err)
+		log.Fatal("decode error", "err", err)
 	}
 	for _, tx := range body.Transactions {
 		fmt.Printf("%x\n", tx.Hash())

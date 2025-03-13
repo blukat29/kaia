@@ -25,6 +25,7 @@ package nodecmd
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"strings"
 
@@ -92,6 +93,18 @@ It expects the genesis file as argument.`,
 		Category: "BLOCKCHAIN COMMANDS",
 		Description: `
 The dumpgenesis command dumps the genesis block configuration in JSON format to stdout.`,
+	}
+
+	DbGetCommand = &cli.Command{
+		Action:    dbGet,
+		Name:      "dbget",
+		Usage:     "Read a key from the underlying key-value database",
+		ArgsUsage: "",
+		Flags: []cli.Flag{
+			utils.MainnetFlag,
+			utils.KairosFlag,
+		},
+		Category: "BLOCKCHAIN COMMANDS",
 	}
 )
 
@@ -265,5 +278,29 @@ func ValidateGenesisConfig(g *blockchain.Genesis) error {
 			}
 		}
 	}
+	return nil
+}
+
+func dbGet(ctx *cli.Context) error {
+	stack := MakeFullNode(ctx)
+	parallelDBWrite := !ctx.Bool(utils.NoParallelDBWriteFlag.Name)
+	singleDB := ctx.Bool(utils.SingleDBFlag.Name)
+	numStateTrieShards := ctx.Uint(utils.NumStateTrieShardsFlag.Name)
+
+	dbtype := database.DBType(ctx.String(utils.DbTypeFlag.Name)).ToValid()
+	if len(dbtype) == 0 {
+		logger.Crit("invalid dbtype", "dbtype", ctx.String(utils.DbTypeFlag.Name))
+	}
+	dbc := &database.DBConfig{
+		Dir: "chaindata", DBType: dbtype, ParallelDBWrite: parallelDBWrite,
+		SingleDB: singleDB, NumStateTrieShards: numStateTrieShards,
+		LevelDBCacheSize: 0, PebbleDBCacheSize: 0, OpenFilesLimit: 0,
+	}
+	chainDB := stack.OpenDatabase(dbc)
+	defer chainDB.Close()
+
+	fmt.Printf("%x\n", chainDB.ReadHeadHeaderHash())
+	fmt.Printf("%x\n", chainDB.ReadCanonicalHash(1))
+
 	return nil
 }
