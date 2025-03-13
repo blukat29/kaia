@@ -320,9 +320,15 @@ func dbGet(ctx *cli.Context) error {
 	return nil
 }
 
-var targetAddr = common.HexToAddress(
-	"0x7bdd84820064d632c6bdbdf608f0bccacdc37966",
-)
+var targetAddrs = []common.Address{
+	common.HexToAddress("0x7bdd84820064d632c6bdbdf608f0bccacdc37966"),
+	common.HexToAddress("0x60F6e30602Af53781AA5137CFDF96C3d18b16FEe"),
+	common.HexToAddress("0x7A795b405Ab719258ADA4cc8a8d52E47CE77db74"),
+	common.HexToAddress("0x5ad32CA5ABF4EA798ba2d8F8CfFF7724dC4A3f81"),
+	common.HexToAddress("0xf3d2bca68c23b94cefbff553ebad9322138c8697"),
+	common.HexToAddress("0xb3b12c667ab36daa70c05f3a5e17721506409186"),
+	common.HexToAddress("0x7dde841f9a2bf323a8c00be344383e86644718ed"),
+}
 
 func printBlock(dbm database.DBManager, num uint64) {
 	h := dbm.ReadCanonicalHash(num)
@@ -356,5 +362,11 @@ func printKey(prefix string, accountKey accountkey.AccountKey) {
 }
 
 func stringifyPub(pub *accountkey.PublicKeySerializable) string {
-	return fmt.Sprintf("%s %x", pub.String(), crypto.PubkeyToAddress(ecdsa.PublicKey(*pub)))
+	addr := crypto.PubkeyToAddress(ecdsa.PublicKey(*pub))
+	for _, a := range targetAddrs {
+		if a == addr {
+			fmt.Println("###### found", a.Hex())
+		}
+	}
+	return fmt.Sprintf("%s %x", pub.String(), addr)
 }
