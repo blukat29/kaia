@@ -2555,6 +2555,7 @@ func (bc *BlockChain) update() {
 type BadBlockArgs struct {
 	Hash  common.Hash  `json:"hash"`
 	Block *types.Block `json:"block"`
+	Raw   string       `json:"raw"`
 }
 
 // BadBlocks returns a list of the last 'bad blocks' that the client has seen on the network

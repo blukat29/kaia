@@ -25,12 +25,16 @@ package nodecmd
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
+	"math/big"
 	"os"
 	"strings"
 
 	"github.com/kaiachain/kaia/blockchain"
+	"github.com/kaiachain/kaia/blockchain/state"
 	"github.com/kaiachain/kaia/blockchain/types"
 	"github.com/kaiachain/kaia/cmd/utils"
+	"github.com/kaiachain/kaia/common"
 	headergov_impl "github.com/kaiachain/kaia/kaiax/gov/headergov/impl"
 	"github.com/kaiachain/kaia/log"
 	"github.com/kaiachain/kaia/params"
@@ -265,5 +269,67 @@ func ValidateGenesisConfig(g *blockchain.Genesis) error {
 			}
 		}
 	}
+	return nil
+}
+
+func fuzzState(ctx *cli.Context) error {
+	// Open an initialise both full and light databases
+	stack := MakeFullNode(ctx)
+	parallelDBWrite := !ctx.Bool(utils.NoParallelDBWriteFlag.Name)
+	singleDB := ctx.Bool(utils.SingleDBFlag.Name)
+	numStateTrieShards := ctx.Uint(utils.NumStateTrieShardsFlag.Name)
+	dbc := &database.DBConfig{
+		Dir: "chaindata", DBType: database.LevelDB, ParallelDBWrite: parallelDBWrite,
+		SingleDB: singleDB, NumStateTrieShards: numStateTrieShards,
+		LevelDBCacheSize: 0, PebbleDBCacheSize: 0, OpenFilesLimit: 0,
+	}
+	chainDB := stack.OpenDatabase(dbc)
+
+	var (
+		root1 = common.HexToHash("0x94272e45c0713ccfb7e273af04aa999f6af2d792ade56f60b95c0b7ea1c5b3df")
+		//root2 = common.HexToHash("0xa928c57a065cbe08046984926cb72c00495df889fea6c241daf5f67fbd3a69ac")
+		acc1 = common.HexToAddress("0x481ad64c5ebf29679e96ef562531716a47364d83")
+		acc2 = common.HexToAddress("0xB8B808b6C68375a6F672a9F6aB81CFD647Ac58A8")
+	)
+
+	sdb := state.NewDatabase(chainDB)
+	s, err := state.New(root1, sdb, nil, nil)
+	if err != nil {
+		logger.Crit("Failed to open state", "err", err)
+	}
+
+	fmt.Printf("bal1 %x = %d\n", acc1, s.GetBalance(acc1))
+	fmt.Printf("bal2 %x = %d\n", acc2, s.GetBalance(acc2))
+
+	root := s.IntermediateRoot(false)
+	fmt.Printf("intermediate root unmodified = %x\n", root)
+
+	s.SetBalance(common.HexToAddress("0xef33b74083a6241af2c0be9188d911d70b9e1060"), new(big.Int).SetBytes(common.FromHex("0x2951c950a7c3ee8c2822")))
+	s.SetBalance(common.HexToAddress("0xf80ae839567a4f4a1eb78fb6cedf9814fec14a4b"), new(big.Int).SetBytes(common.FromHex("0x2472af3a3d306ae2a5c3e4")))
+	root = s.IntermediateRoot(false)
+	fmt.Printf("intermediate root recovered = %x\n", root)
+
+	s.SetBalance(acc2, big.NewInt(0))
+	s.SetNonce(acc2, 0)
+
+	root = s.IntermediateRoot(false)
+	fmt.Printf("intermediate root recovered = %x\n", root)
+
+	/*
+		s.SetBalance(acc2, big.NewInt(0x48f923dac82d0100))
+		s.SetNonce(acc2, 6)
+		s.Finalise(false, false)
+		fmt.Printf("bal2 %x = %d\n", acc2, s.GetBalance(acc2))
+		root = s.IntermediateRoot(false)
+		fmt.Printf("intermediate root modified = %x\n", root)
+	*/
+	/*
+		root, err = s.Commit(false)
+		if err != nil {
+			logger.Info("Failed to commit state", "err", err)
+		}
+		fmt.Printf("commit modified = %x\n", root)
+	*/
+
 	return nil
 }
