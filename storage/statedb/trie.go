@@ -71,6 +71,7 @@ type Trie struct {
 	pruning           bool // True if the underlying database has pruning enabled.
 	storage           bool // If storage and Pruning are both true, root hash is attached a fresh nonce.
 	pruningMarksCache map[common.ExtHash]uint64
+	pauseLivePruning  bool // Temporarily stop marking trie nodes for pruning. Controlled by upper layer (i.e. StateDB)
 }
 
 // newFlag returns the cache flag value for a newly created node.
@@ -596,12 +597,25 @@ func (t *Trie) hashRoot(db *Database, onleaf LeafCallback) (common.ExtHash, node
 	return hash, cached
 }
 
+func (t *Trie) PauseLivePruning() {
+	t.pauseLivePruning = true
+}
+
+func (t *Trie) ResumeLivePruning() {
+	t.pauseLivePruning = false
+}
+
 // Mark the node for later pruning by writing PruningMark to database.
 func (t *Trie) markPrunableNode(n node) {
 	// Mark nodes only if both conditions are met:
 	// - t.pruning: database has pruning enabled, i.e. nodes are stored with ExtHash
 	// - t.PruningBlockNumber: requested pruning through state.New -> OpenTrie -> NewTrie.
 	if !t.pruning || t.PruningBlockNumber == 0 {
+		return
+	}
+	// Temporarily stop marking trie nodes for pruning, despite pruning is enabled.
+	// - t.pauseLivePruning: requested through state.PauseLivePruning() -> trie.PauseLivePruning()
+	if t.pauseLivePruning {
 		return
 	}
 

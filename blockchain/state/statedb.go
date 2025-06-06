@@ -1100,6 +1100,14 @@ func (s *StateDB) clearJournalAndRefund() {
 	s.refund = 0
 }
 
+func (s *StateDB) PauseLivePruning() {
+	s.trie.PauseLivePruning()
+}
+
+func (s *StateDB) ResumeLivePruning() {
+	s.trie.ResumeLivePruning()
+}
+
 // Commit writes the state to the underlying in-memory trie database.
 func (s *StateDB) Commit(deleteEmptyObjects bool) (root common.Hash, err error) {
 	if s.dbErr != nil {

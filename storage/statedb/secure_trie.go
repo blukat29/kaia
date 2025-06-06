@@ -213,6 +213,9 @@ func (t *SecureTrie) NodeIterator(start []byte) NodeIterator {
 	return t.trie.NodeIterator(start)
 }
 
+func (t *SecureTrie) PauseLivePruning()  { t.trie.PauseLivePruning() }
+func (t *SecureTrie) ResumeLivePruning() { t.trie.ResumeLivePruning() }
+
 // hashKey returns the hash of key as an ephemeral buffer.
 // The caller must not hold onto the return value because it will become
 // invalid on the next call to hashKey or secKey.

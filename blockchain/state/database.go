@@ -112,6 +112,13 @@ type Trie interface {
 	// nodes of the longest existing prefix of the key (at least the root), ending
 	// with the node that proves the absence of the key.
 	Prove(key []byte, fromLevel uint, proofDb database.DBManager) error
+	// PauseLivePruning stops the trie from marking trie nodes for pruning.
+	// Use it when (1) using prunable trie (PruningBlockNumber > 0) AND
+	// (2) you want to revert a state across multiple transactions.
+	PauseLivePruning()
+	// ResumeLivePruning resumes marking trie nodes for pruning.
+	// Make sure to call it after PauseLivePruning.
+	ResumeLivePruning()
 }
 
 // NewDatabase creates a backing store for state. The returned database is safe for
