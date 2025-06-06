@@ -68,12 +68,14 @@ func TestRollback(t *testing.T) {
 		{ // Run bundle transactions.
 			// Save state before bundle execution.
 			snapshot := state.Copy()
+			state.PauseLivePruning()
 
 			// Execute bundle transactions.
 			state.AddBalance(acc1, big.NewInt(100))
 
 			// Restore state due to bundle transaction revert.
 			state.Set(snapshot)
+			state.ResumeLivePruning()
 		}
 
 		// Finalize the block.
