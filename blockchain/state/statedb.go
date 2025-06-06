@@ -995,6 +995,41 @@ func deepCopyLogs(from, to *StateDB) {
 	}
 }
 
+func (stateDB *StateDB) finaliseDirtyObjects(journal *journal, deleteEmptyObjects bool, setStorageRoot bool) {
+	for addr := range journal.dirties {
+		so, exist := stateDB.stateObjects[addr]
+		if !exist {
+			// ripeMD is 'touched' at block 1714175, in tx 0x1237f737031e40bcde4a8b7e717b2d15e3ecadfe49bb1bbc71ee9deb09c6fcf2
+			// That tx goes out of gas, and although the notion of 'touched' does not exist there, the
+			// touch-event will still be recorded in the journal. Since ripeMD is a special snowflake,
+			// it will persist in the journal even though the journal is reverted. In this special circumstance,
+			// it may exist in `stateDB.journal.dirties` but not in `stateDB.stateObjects`.
+			// Thus, we can safely ignore it here
+			continue
+		}
+
+		if so.selfDestructed || (deleteEmptyObjects && so.empty()) {
+			stateDB.deleteStateObject(so)
+
+			// If state snapshotting is active, also mark the destruction there.
+			// Note, we can't do this only at the end of a block because multiple
+			// transactions within the same block might self destruct and then
+			// ressurrect an account; but the snapshotter needs both events.
+			if stateDB.snap != nil {
+				stateDB.snapDestructs[so.addrHash] = struct{}{} // We need to maintain account deletions explicitly (will remain set indefinitely)
+				delete(stateDB.snapAccounts, so.addrHash)       // Clear out any previously updated account data (may be recreated via a ressurrect)
+				delete(stateDB.snapStorage, so.addrHash)        // Clear out any previously updated storage data (may be recreated via a ressurrect)
+			}
+		} else {
+			so.updateStorageTrie(stateDB.db)
+			so.setStorageRoot(setStorageRoot, stateDB.stateObjectsDirtyStorage)
+			stateDB.updateStateObject(so)
+		}
+		so.created = false
+		stateDB.stateObjectsDirty[addr] = struct{}{}
+	}
+}
+
 // Snapshot returns an identifier for the current revision of the state.
 func (s *StateDB) Snapshot() int {
 	id := s.nextRevisionId
@@ -1027,38 +1062,8 @@ func (s *StateDB) GetRefund() uint64 {
 // Finalise finalises the state by removing the self destructed objects
 // and clears the journal as well as the refunds.
 func (stateDB *StateDB) Finalise(deleteEmptyObjects bool, setStorageRoot bool) {
-	for addr := range stateDB.journal.dirties {
-		so, exist := stateDB.stateObjects[addr]
-		if !exist {
-			// ripeMD is 'touched' at block 1714175, in tx 0x1237f737031e40bcde4a8b7e717b2d15e3ecadfe49bb1bbc71ee9deb09c6fcf2
-			// That tx goes out of gas, and although the notion of 'touched' does not exist there, the
-			// touch-event will still be recorded in the journal. Since ripeMD is a special snowflake,
-			// it will persist in the journal even though the journal is reverted. In this special circumstance,
-			// it may exist in `stateDB.journal.dirties` but not in `stateDB.stateObjects`.
-			// Thus, we can safely ignore it here
-			continue
-		}
+	stateDB.finaliseDirtyObjects(stateDB.journal, deleteEmptyObjects, setStorageRoot)
 
-		if so.selfDestructed || (deleteEmptyObjects && so.empty()) {
-			stateDB.deleteStateObject(so)
-
-			// If state snapshotting is active, also mark the destruction there.
-			// Note, we can't do this only at the end of a block because multiple
-			// transactions within the same block might self destruct and then
-			// ressurrect an account; but the snapshotter needs both events.
-			if stateDB.snap != nil {
-				stateDB.snapDestructs[so.addrHash] = struct{}{} // We need to maintain account deletions explicitly (will remain set indefinitely)
-				delete(stateDB.snapAccounts, so.addrHash)       // Clear out any previously updated account data (may be recreated via a ressurrect)
-				delete(stateDB.snapStorage, so.addrHash)        // Clear out any previously updated storage data (may be recreated via a ressurrect)
-			}
-		} else {
-			so.updateStorageTrie(stateDB.db)
-			so.setStorageRoot(setStorageRoot, stateDB.stateObjectsDirtyStorage)
-			stateDB.updateStateObject(so)
-		}
-		so.created = false
-		stateDB.stateObjectsDirty[addr] = struct{}{}
-	}
 	// Invalidate journal because reverting across transactions is not allowed.
 	stateDB.clearJournalAndRefund()
 
