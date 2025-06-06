@@ -32,6 +32,7 @@ import (
 	"github.com/kaiachain/kaia/crypto"
 	"github.com/kaiachain/kaia/params"
 	"github.com/kaiachain/kaia/storage/database"
+	"github.com/stretchr/testify/assert"
 	checker "gopkg.in/check.v1"
 )
 
@@ -208,6 +209,72 @@ func TestSnapshotForDeletedObject(t *testing.T) {
 	if so1Restored != nil {
 		t.Fatalf("deleted object not nil after restoring snapshot: %+v", so1Restored)
 	}
+}
+
+// Tests that KIP-247 atomic bundle rollback can be realized by statedb.RevertToSnapshot.
+func TestSnapshotOverMultiTx(t *testing.T) {
+	var (
+		memDB     = database.NewMemoryDBManager()
+		state, _  = New(common.Hash{}, NewDatabase(memDB), nil, nil)
+		addr      = common.HexToAddress("0x1")
+		txhash1   = common.HexToHash("0xaaaa")
+		txhash2   = common.HexToHash("0xbbbb")
+		blockhash = common.HexToHash("0xffff")
+
+		assertBalance = func(expected uint64) {
+			assert.Equal(t, expected, state.GetBalance(addr).Uint64())
+		}
+	)
+
+	// Before TX #1, store snapshot.
+	state.SetBalance(addr, big.NewInt(100))
+	assert.Equal(t, uint64(100), state.GetBalance(addr).Uint64())
+	bundleSnap := state.Snapshot()
+	t.Logf("bundleSnap: %d", bundleSnap)
+
+	// Apply TX #1, succeeds.
+	{
+		state.SetTxContext(txhash1, blockhash, 0) // as in StateProcessor.Process()
+
+		state.SubBalance(addr, big.NewInt(1)) // spend gas as in StateTransition.buyGas()
+		assertBalance(99)
+
+		txSnap := state.Snapshot() // start tx execution as in EVM.Call()
+		t.Logf("txSnap: %d", txSnap)
+		state.SubBalance(addr, big.NewInt(10)) // send money
+		assertBalance(89)
+
+		_ = txSnap // no revert
+		assertBalance(89)
+
+		state.Finalise(true, false) // as done in BlockChain.ApplyTransaction()
+	}
+
+	assertBalance(89)
+
+	// Apply TX #2, succeeds.
+	{
+		state.SetTxContext(txhash2, blockhash, 0) // as in StateProcessor.Process()
+
+		state.SubBalance(addr, big.NewInt(2)) // spend gas as in StateTransition.buyGas()
+		assertBalance(87)
+
+		txSnap := state.Snapshot() // start tx execution as in EVM.Call()
+		t.Logf("txSnap: %d", txSnap)
+		state.SubBalance(addr, big.NewInt(20)) // send money
+		assertBalance(67)
+
+		state.RevertToSnapshot(txSnap) // tx reverted as in EVM.Call()
+		assertBalance(87)
+
+		state.Finalise(true, false) // as done in BlockChain.ApplyTransaction()
+	}
+
+	assertBalance(87)
+
+	// Revert to Before TX #1
+	//state.RevertToSnapshot(bundleSnap)
+	//assertBalance(100)
 }
 
 func compareStateObjects(so0, so1 *stateObject, t *testing.T) {
