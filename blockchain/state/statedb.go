@@ -1024,6 +1024,18 @@ func (s *StateDB) GetRefund() uint64 {
 	return s.refund
 }
 
+func (s *StateDB) StartPruningSnapshot() {
+	s.trie.StartPruningSnapshot()
+}
+
+func (s *StateDB) EndPruningSnapshot() {
+	s.trie.EndPruningSnapshot()
+}
+
+func (s *StateDB) RevertPruningSnapshot() {
+	s.trie.RevertPruningSnapshot()
+}
+
 // Finalise finalises the state by removing the self destructed objects
 // and clears the journal as well as the refunds.
 func (stateDB *StateDB) Finalise(deleteEmptyObjects bool, setStorageRoot bool) {

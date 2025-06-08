@@ -71,6 +71,8 @@ type Trie struct {
 	pruning           bool // True if the underlying database has pruning enabled.
 	storage           bool // If storage and Pruning are both true, root hash is attached a fresh nonce.
 	pruningMarksCache map[common.ExtHash]uint64
+	doSnapshot        bool
+	journalMarks      []common.ExtHash
 }
 
 // newFlag returns the cache flag value for a newly created node.
@@ -116,6 +118,7 @@ func newTrie(root common.ExtHash, db *Database, opts *TrieOpts, storage bool) (*
 		pruning:           db.diskDB.ReadPruningEnabled(),
 		storage:           storage,
 		pruningMarksCache: make(map[common.ExtHash]uint64),
+		journalMarks:      make([]common.ExtHash, 0),
 	}
 	if !trie.pruning && trie.PruningBlockNumber != 0 {
 		return nil, ErrPruningDisabled
@@ -609,12 +612,20 @@ func (t *Trie) markPrunableNode(n node) {
 		// If a node exists as a hashNode, it means the node is either:
 		// (1) lives in database but yet to be resolved - subject to pruning,
 		// (2) collapsed by Hash or Commit - may or may not be in database, add the mark anyway.
-		t.pruningMarksCache[common.BytesToExtHash(hn)] = t.PruningBlockNumber
+		key := common.BytesToExtHash(hn)
+		if t.doSnapshot {
+			t.journalMarks = append(t.journalMarks, key)
+		}
+		t.pruningMarksCache[key] = t.PruningBlockNumber
 	} else if hn, _ := n.cache(); hn != nil {
 		// If node.flags.hash is nonempty, it means the node is either:
 		// (1) loaded from databas - subject to pruning,
 		// (2) went through hasher by Hash or Commit - may or may not be in database, add the mark anyway.
-		t.pruningMarksCache[common.BytesToExtHash(hn)] = t.PruningBlockNumber
+		key := common.BytesToExtHash(hn)
+		if t.doSnapshot {
+			t.journalMarks = append(t.journalMarks, key)
+		}
+		t.pruningMarksCache[key] = t.PruningBlockNumber
 	}
 }
 
@@ -629,6 +640,28 @@ func (t *Trie) commitPruningMarks() {
 
 		t.pruningMarksCache = make(map[common.ExtHash]uint64)
 	}
+}
+
+func (t *Trie) StartPruningSnapshot() {
+	t.doSnapshot = true
+}
+
+func (t *Trie) EndPruningSnapshot() {
+	if !t.doSnapshot {
+		return
+	}
+	t.journalMarks = make([]common.ExtHash, 0)
+	t.doSnapshot = false
+}
+
+func (t *Trie) RevertPruningSnapshot() {
+	if t.doSnapshot {
+		for _, mark := range t.journalMarks {
+			delete(t.pruningMarksCache, mark)
+		}
+		t.journalMarks = make([]common.ExtHash, 0)
+	}
+	t.doSnapshot = false
 }
 
 func GetHashAndHexKey(key []byte) ([]byte, []byte) {
