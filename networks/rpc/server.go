@@ -75,6 +75,17 @@ var (
 
 	// UpstreamArchiveEN is the upstream archive mode EN endpoint
 	UpstreamArchiveEN string
+
+	// UpstreamArchiveENTimeout is the timeout for fallback requests to the upstream archive EN.
+	UpstreamArchiveENTimeout = DefaultHTTPTimeouts.ExecutionTimeout
+
+	// UpstreamArchiveENMaxInFlight is the maximum number of concurrent fallback requests
+	// allowed to the upstream archive EN. Set 0 to unlimited.
+	UpstreamArchiveENMaxInFlight int64 = 512
+
+	// UpstreamArchiveENMaxConns is the maximum number of HTTP connections per host used
+	// for fallback requests to the upstream archive EN. Set 0 to unlimited.
+	UpstreamArchiveENMaxConns = 512
 )
 
 // Server is an RPC server.

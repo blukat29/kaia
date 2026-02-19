@@ -50,15 +50,18 @@ const (
 
 // DefaultConfig contains reasonable default settings.
 var DefaultConfig = Config{
-	DBType:           DefaultDBType(),
-	DataDir:          DefaultDataDir(),
-	HTTPPort:         DefaultHTTPPort,
-	HTTPModules:      []string{"net", "web3"},
-	HTTPVirtualHosts: []string{"localhost"},
-	HTTPTimeouts:     rpc.DefaultHTTPTimeouts,
-	WSPort:           DefaultWSPort,
-	WSModules:        []string{"net", "web3"},
-	GRPCPort:         DefaultGRPCPort,
+	DBType:                       DefaultDBType(),
+	DataDir:                      DefaultDataDir(),
+	HTTPPort:                     DefaultHTTPPort,
+	HTTPModules:                  []string{"net", "web3"},
+	HTTPVirtualHosts:             []string{"localhost"},
+	HTTPTimeouts:                 rpc.DefaultHTTPTimeouts,
+	UpstreamArchiveENTimeout:     rpc.UpstreamArchiveENTimeout,
+	UpstreamArchiveENMaxInFlight: int(rpc.UpstreamArchiveENMaxInFlight),
+	UpstreamArchiveENMaxConns:    rpc.UpstreamArchiveENMaxConns,
+	WSPort:                       DefaultWSPort,
+	WSModules:                    []string{"net", "web3"},
+	GRPCPort:                     DefaultGRPCPort,
 	P2P: p2p.Config{
 		ListenAddr:             fmt.Sprintf(":%d", DefaultP2PPort),
 		MaxPhysicalConnections: DefaultMaxPhysicalConnections,

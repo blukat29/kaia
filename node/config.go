@@ -29,6 +29,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/kaiachain/kaia/accounts"
 	"github.com/kaiachain/kaia/accounts/keystore"
@@ -182,6 +183,17 @@ type Config struct {
 
 	// UpstreamArchiveEN is an archive mode EN endpoint
 	UpstreamArchiveEN string
+
+	// UpstreamArchiveENTimeout is the timeout for fallback requests to the upstream archive EN.
+	UpstreamArchiveENTimeout time.Duration `toml:",omitempty"`
+
+	// UpstreamArchiveENMaxInFlight is the maximum number of concurrent fallback requests
+	// allowed to the upstream archive EN.
+	UpstreamArchiveENMaxInFlight int `toml:",omitempty"`
+
+	// UpstreamArchiveENMaxConns is the maximum number of HTTP connections per host used
+	// for fallback requests to the upstream archive EN.
+	UpstreamArchiveENMaxConns int `toml:",omitempty"`
 
 	// Ntp server:port to check the synchronization when booting the node
 	NtpRemoteServer string `toml:",omitempty"`

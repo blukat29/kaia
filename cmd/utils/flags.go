@@ -930,6 +930,30 @@ var (
 		EnvVars:  []string{"KLAYTN_RPC_UPSTREAM_EN", "KAIA_RPC_UPSTREAM_EN"},
 		Category: "API AND CONSOLE",
 	}
+	RPCUpstreamArchiveENTimeoutFlag = &cli.IntFlag{
+		Name:     "upstream-en-timeout",
+		Usage:    "timeout for upstream archive EN fallback requests (seconds)",
+		Value:    int(rpc.UpstreamArchiveENTimeout / time.Second),
+		Aliases:  []string{"rpc.upstream-en-timeout"},
+		EnvVars:  []string{"KLAYTN_RPC_UPSTREAM_EN_TIMEOUT", "KAIA_RPC_UPSTREAM_EN_TIMEOUT"},
+		Category: "API AND CONSOLE",
+	}
+	RPCUpstreamArchiveENMaxInFlightFlag = &cli.IntFlag{
+		Name:     "upstream-en-max-inflight",
+		Usage:    "maximum concurrent fallback requests to upstream archive EN",
+		Value:    int(rpc.UpstreamArchiveENMaxInFlight),
+		Aliases:  []string{"rpc.upstream-en-max-inflight"},
+		EnvVars:  []string{"KLAYTN_RPC_UPSTREAM_EN_MAX_INFLIGHT", "KAIA_RPC_UPSTREAM_EN_MAX_INFLIGHT"},
+		Category: "API AND CONSOLE",
+	}
+	RPCUpstreamArchiveENMaxConnsFlag = &cli.IntFlag{
+		Name:     "upstream-en-max-connections",
+		Usage:    "maximum HTTP connections per host for upstream archive EN fallback requests",
+		Value:    rpc.UpstreamArchiveENMaxConns,
+		Aliases:  []string{"rpc.upstream-en-max-connections"},
+		EnvVars:  []string{"KLAYTN_RPC_UPSTREAM_EN_MAX_CONNECTIONS", "KAIA_RPC_UPSTREAM_EN_MAX_CONNECTIONS"},
+		Category: "API AND CONSOLE",
+	}
 
 	WSEnabledFlag = &cli.BoolFlag{
 		Name:     "ws",

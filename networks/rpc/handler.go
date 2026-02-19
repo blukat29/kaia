@@ -27,6 +27,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
+	"net/url"
 	"reflect"
 	"strconv"
 	"strings"
@@ -78,6 +80,13 @@ type callProc struct {
 	ctx       context.Context
 	notifiers []*Notifier
 }
+
+var (
+	upstreamArchiveENInFlight atomic.Int64
+
+	upstreamArchiveENHTTPClientOnce sync.Once
+	upstreamArchiveENHTTPClient     *http.Client
+)
 
 func newHandler(connCtx context.Context, conn jsonWriter, idgen func() ID, reg *serviceRegistry) *handler {
 	rootCtx, cancelRoot := context.WithCancel(connCtx)
@@ -432,13 +441,8 @@ func (h *handler) handleSubscribe(cp *callProc, msg *jsonrpcMessage) *jsonrpcMes
 func (h *handler) runMethod(ctx context.Context, msg *jsonrpcMessage, callb *callback, args []reflect.Value) *jsonrpcMessage {
 	result, err := callb.call(ctx, msg.Method, args)
 	if err != nil {
-		// TODO-Kaia:
-		// 1. The single URL may be extended to the list of URL.
-		// 2. The URL (list or single) seems not modifiable at runtime.
-		// 3. Any request can be relayed as well as the state lack.
-		// 4. Make a new rpcErrorResponse struct.
 		if UpstreamArchiveEN != "" && shouldRequestUpstream(err) {
-			return requestUpstream(ctx, msg, args)
+			return requestUpstream(ctx, msg, args, err)
 		}
 		rpcErrorResponsesCounter.Inc(1)
 		return msg.errorResponse(err)
@@ -456,13 +460,74 @@ func shouldRequestUpstream(err error) bool {
 	return errors.As(err, &missingNodeError)
 }
 
+func acquireUpstreamSlot() error {
+	var (
+		limit    = UpstreamArchiveENMaxInFlight
+		inFlight = upstreamArchiveENInFlight.Load()
+	)
+	if limit > 0 && inFlight >= limit {
+		return fmt.Errorf("upstream archive fallback saturated (%d/%d)", inFlight, limit)
+	}
+	upstreamArchiveENInFlight.Add(1)
+	return nil
+}
+
+func releaseUpstreamSlot() {
+	upstreamArchiveENInFlight.Add(-1)
+}
+
+// Return the dedicated HTTP client for upstream archive EN with connection limiting.
+func getUpstreamHTTPClient() *http.Client {
+	upstreamArchiveENHTTPClientOnce.Do(func() {
+		maxConns := UpstreamArchiveENMaxConns
+		if maxConns < 1 {
+			maxConns = 1
+		}
+
+		transport := http.DefaultTransport.(*http.Transport).Clone()
+		transport.MaxConnsPerHost = maxConns
+		transport.MaxIdleConns = maxConns
+		transport.MaxIdleConnsPerHost = maxConns
+		if UpstreamArchiveENTimeout > 0 {
+			transport.ResponseHeaderTimeout = UpstreamArchiveENTimeout
+		}
+
+		upstreamArchiveENHTTPClient = &http.Client{Transport: transport}
+	})
+	return upstreamArchiveENHTTPClient
+}
+
+func dialUpstream(ctx context.Context, endpoint string) (*Client, error) {
+	u, err := url.Parse(endpoint)
+	if err != nil {
+		return nil, err
+	}
+	if u.Scheme == "http" || u.Scheme == "https" {
+		return DialHTTPWithClient(endpoint, getUpstreamHTTPClient())
+	}
+	return DialContext(ctx, endpoint)
+}
+
 // requestUpstream is the function to request upstream archive en
-func requestUpstream(ctx context.Context, msg *jsonrpcMessage, args []reflect.Value) *jsonrpcMessage {
-	ctx, cancel := context.WithTimeout(ctx, DefaultHTTPTimeouts.ExecutionTimeout)
+func requestUpstream(ctx context.Context, msg *jsonrpcMessage, args []reflect.Value, originalErr error) *jsonrpcMessage {
+	if err := acquireUpstreamSlot(); err != nil {
+		rpcErrorResponsesCounter.Inc(1)
+		// As if upstream is not configured, return the original error.
+		// It isn't helpful to return the "upstream saturated" error.
+		return msg.errorResponse(originalErr)
+	}
+	defer releaseUpstreamSlot()
+
+	timeout := UpstreamArchiveENTimeout
+	if timeout < time.Second {
+		timeout = DefaultHTTPTimeouts.ExecutionTimeout
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
 	var result interface{}
-	c, err := DialContext(ctx, UpstreamArchiveEN)
+	c, err := dialUpstream(ctx, UpstreamArchiveEN)
 	if err == nil {
 		defer c.Close()
 

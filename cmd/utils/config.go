@@ -476,6 +476,18 @@ func setHTTP(ctx *cli.Context, cfg *node.Config) {
 		rpc.UpstreamArchiveEN = ctx.String(RPCUpstreamArchiveENFlag.Name)
 		cfg.UpstreamArchiveEN = rpc.UpstreamArchiveEN
 	}
+	if ctx.IsSet(RPCUpstreamArchiveENTimeoutFlag.Name) {
+		rpc.UpstreamArchiveENTimeout = time.Duration(ctx.Int(RPCUpstreamArchiveENTimeoutFlag.Name)) * time.Second
+		cfg.UpstreamArchiveENTimeout = rpc.UpstreamArchiveENTimeout
+	}
+	if ctx.IsSet(RPCUpstreamArchiveENMaxInFlightFlag.Name) {
+		rpc.UpstreamArchiveENMaxInFlight = int64(ctx.Int(RPCUpstreamArchiveENMaxInFlightFlag.Name))
+		cfg.UpstreamArchiveENMaxInFlight = int(rpc.UpstreamArchiveENMaxInFlight)
+	}
+	if ctx.IsSet(RPCUpstreamArchiveENMaxConnsFlag.Name) {
+		rpc.UpstreamArchiveENMaxConns = ctx.Int(RPCUpstreamArchiveENMaxConnsFlag.Name)
+		cfg.UpstreamArchiveENMaxConns = rpc.UpstreamArchiveENMaxConns
+	}
 }
 
 // setWS creates the WebSocket RPC listener interface string from the set
