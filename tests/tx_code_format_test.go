@@ -29,7 +29,6 @@ import (
 	"github.com/kaiachain/kaia/common"
 	"github.com/kaiachain/kaia/common/profile"
 	"github.com/kaiachain/kaia/kerrors"
-	"github.com/kaiachain/kaia/log"
 	"github.com/kaiachain/kaia/params"
 	"github.com/stretchr/testify/assert"
 )
@@ -49,7 +48,6 @@ func TestCodeFormat(t *testing.T) {
 		{"FeeDelegatedWithRatioSmartContractDeployWithInvalidCodeFormat", genFeeDelegatedWithRatioSmartContractDeployWithCodeFormat},
 	}
 
-	log.EnableLogForTest(log.LvlCrit, log.LvlTrace)
 	prof := profile.NewProfiler()
 
 	// Initialize blockchain

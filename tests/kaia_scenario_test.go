@@ -43,7 +43,6 @@ import (
 	"github.com/kaiachain/kaia/crypto"
 	"github.com/kaiachain/kaia/kaiax"
 	mock_kaiax "github.com/kaiachain/kaia/kaiax/mock"
-	"github.com/kaiachain/kaia/log"
 	"github.com/kaiachain/kaia/params"
 	"github.com/kaiachain/kaia/rlp"
 	"github.com/kaiachain/kaia/storage/database"
@@ -205,7 +204,6 @@ func createRoleBasedAccountWithAccountKeyWeightedMultiSig(multisigs []TestCreate
 // Since we provide fee-delegated transactions, it is not true in the above case.
 // This test code should succeed.
 func TestFeeDelegatedWithSmallBalance(t *testing.T) {
-	log.EnableLogForTest(log.LvlCrit, log.LvlTrace)
 	prof := profile.NewProfiler()
 
 	// Initialize blockchain
@@ -301,7 +299,6 @@ func TestFeeDelegatedWithSmallBalance(t *testing.T) {
 // TestSmartContractDeployAddress checks that the smart contract is deployed to the given address or not by
 // checking receipt.ContractAddress.
 func TestSmartContractDeployAddress(t *testing.T) {
-	log.EnableLogForTest(log.LvlCrit, log.LvlTrace)
 	prof := profile.NewProfiler()
 
 	// Initialize blockchain
@@ -376,7 +373,6 @@ func TestSmartContractDeployAddress(t *testing.T) {
 // 3. Execute "reward" function with amountToSend
 // 4. Validate "reward" function is executed correctly by executing "balanceOf".
 func TestSmartContractScenario(t *testing.T) {
-	log.EnableLogForTest(log.LvlCrit, log.LvlTrace)
 	prof := profile.NewProfiler()
 
 	// Initialize blockchain
@@ -540,7 +536,6 @@ func TestSmartContractScenario(t *testing.T) {
 // 3. Try value transfer. It should be failed.
 // 4. Try fee delegation. It should be failed.
 func TestSmartContractSign(t *testing.T) {
-	log.EnableLogForTest(log.LvlCrit, log.LvlTrace)
 	prof := profile.NewProfiler()
 
 	// Initialize blockchain
@@ -684,7 +679,6 @@ func TestSmartContractSign(t *testing.T) {
 // 3. Execute "reward" function with amountToSend with fee-delegation.
 // 4. Validate "reward" function is executed correctly by executing "balanceOf".
 func TestFeeDelegatedSmartContractScenario(t *testing.T) {
-	log.EnableLogForTest(log.LvlCrit, log.LvlTrace)
 	prof := profile.NewProfiler()
 
 	// Initialize blockchain
@@ -862,7 +856,6 @@ func TestFeeDelegatedSmartContractScenario(t *testing.T) {
 // 3. Execute "reward" function with amountToSend with fee-delegation.
 // 4. Validate "reward" function is executed correctly by executing "balanceOf".
 func TestFeeDelegatedSmartContractScenarioWithRatio(t *testing.T) {
-	log.EnableLogForTest(log.LvlCrit, log.LvlTrace)
 	prof := profile.NewProfiler()
 
 	// Initialize blockchain
@@ -1043,7 +1036,6 @@ func TestFeeDelegatedSmartContractScenarioWithRatio(t *testing.T) {
 // 4. Key update of anon using AccountUpdate with multisig keys.
 // 5. Transfer (anon-> reservoir) using TxTypeValueTransfer.
 func TestAccountUpdate(t *testing.T) {
-	log.EnableLogForTest(log.LvlCrit, log.LvlTrace)
 	prof := profile.NewProfiler()
 
 	// Initialize blockchain
@@ -1240,7 +1232,6 @@ func TestAccountUpdate(t *testing.T) {
 // 2. Key update of anon using TxTypeFeeDelegatedAccountUpdate
 // 3. Transfer (anon -> reservoir) using TxTypeValueTransfer.
 func TestFeeDelegatedAccountUpdate(t *testing.T) {
-	log.EnableLogForTest(log.LvlCrit, log.LvlTrace)
 	prof := profile.NewProfiler()
 
 	// Initialize blockchain
@@ -1370,7 +1361,6 @@ func TestFeeDelegatedAccountUpdate(t *testing.T) {
 // 2. Key update of anon using TxTypeFeeDelegatedAccountUpdateWithRatio.
 // 3. Transfer (anon -> reservoir) using TxTypeValueTransfer.
 func TestFeeDelegatedAccountUpdateWithRatio(t *testing.T) {
-	log.EnableLogForTest(log.LvlCrit, log.LvlTrace)
 	prof := profile.NewProfiler()
 
 	// Initialize blockchain
@@ -1503,7 +1493,6 @@ func TestFeeDelegatedAccountUpdateWithRatio(t *testing.T) {
 // 3. Transfer (anon -> reservoir) using TxTypeValueTransfer with only two keys.
 // 4. FAILED-CASE: Transfer (anon -> reservoir) using TxTypeValueTransfer with only one key.
 func TestMultisigScenario(t *testing.T) {
-	log.EnableLogForTest(log.LvlCrit, log.LvlTrace)
 	prof := profile.NewProfiler()
 
 	// Initialize blockchain
@@ -1983,7 +1972,6 @@ func TestTxBundle(t *testing.T) {
 
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			log.EnableLogForTest(log.LvlCrit, log.LvlTrace)
 			prof := profile.NewProfiler()
 
 			// Initialize blockchain

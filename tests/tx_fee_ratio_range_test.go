@@ -32,7 +32,6 @@ import (
 	"github.com/kaiachain/kaia/common/profile"
 	"github.com/kaiachain/kaia/crypto"
 	"github.com/kaiachain/kaia/kerrors"
-	"github.com/kaiachain/kaia/log"
 	"github.com/kaiachain/kaia/params"
 	"github.com/stretchr/testify/assert"
 )
@@ -58,7 +57,6 @@ func TestTxFeeRatioRange(t *testing.T) {
 }
 
 func testTxFeeRatioRange(t *testing.T, feeRatio types.FeeRatio, expected error) {
-	log.EnableLogForTest(log.LvlCrit, log.LvlTrace)
 	prof := profile.NewProfiler()
 
 	// Initialize blockchain

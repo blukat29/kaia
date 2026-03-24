@@ -12,7 +12,6 @@ import (
 	"github.com/kaiachain/kaia/common"
 	"github.com/kaiachain/kaia/consensus/istanbul"
 	testcontract "github.com/kaiachain/kaia/contracts/contracts/testing/reward"
-	"github.com/kaiachain/kaia/log"
 	"github.com/kaiachain/kaia/params"
 	"github.com/kaiachain/kaia/storage/database"
 	"github.com/stretchr/testify/assert"
@@ -24,7 +23,6 @@ import (
 // Post-Kaia engine.Finalize() relies on the state trie to calculate rewards, so the state regeneration
 // can be interfered. This test ensures that the state regeneration is robust against such interference.
 func TestStateReexec(t *testing.T) {
-	log.EnableLogForTest(log.LvlCrit, log.LvlWarn)
 
 	// Test parameters
 	var (

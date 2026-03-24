@@ -37,7 +37,6 @@ import (
 	"github.com/kaiachain/kaia/common/compiler"
 	"github.com/kaiachain/kaia/common/profile"
 	"github.com/kaiachain/kaia/crypto"
-	"github.com/kaiachain/kaia/log"
 )
 
 type deployedContract struct {
@@ -344,7 +343,6 @@ func BenchmarkSmartContractExecute(b *testing.B) {
 }
 
 func BenchmarkStorageTrieStore(b *testing.B) {
-	log.EnableLogForTest(log.LvlCrit, log.LvlTrace)
 	prof := profile.NewProfiler()
 
 	benchOption := ContractExecutionOption{

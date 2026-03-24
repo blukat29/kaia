@@ -44,7 +44,6 @@ import (
 	reward_impl "github.com/kaiachain/kaia/kaiax/reward/impl"
 	staking_impl "github.com/kaiachain/kaia/kaiax/staking/impl"
 	valset_impl "github.com/kaiachain/kaia/kaiax/valset/impl"
-	"github.com/kaiachain/kaia/log"
 	"github.com/kaiachain/kaia/params"
 	"github.com/kaiachain/kaia/rlp"
 	"github.com/kaiachain/kaia/storage/database"
@@ -56,7 +55,6 @@ import (
 // genesis.json, b1.rlp, and b2.rlp has raw data of genesis, and consecutive two blocks after the genesis block.
 // If anything is failed, it can be considered that a hard fork occurs.
 func TestHardForkBlock(t *testing.T) {
-	log.EnableLogForTest(log.LvlCrit, log.LvlTrace)
 	var genesis blockchain.Genesis
 
 	// If you uncomment the below, you can find this test failed with an error "!!!!!HARD FORK DETECTED!!!!!"
@@ -206,7 +204,6 @@ func genBlocks(t *testing.T) {
 		{"RoleBasedWithMultiSig", genRoleBasedWithMultiSigAccount(t)},
 	}
 
-	log.EnableLogForTest(log.LvlCrit, log.LvlTrace)
 	prof := profile.NewProfiler()
 
 	// Initialize blockchain

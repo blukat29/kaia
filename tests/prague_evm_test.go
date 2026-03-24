@@ -34,7 +34,6 @@ import (
 	"github.com/kaiachain/kaia/common/hexutil"
 	"github.com/kaiachain/kaia/consensus/istanbul"
 	"github.com/kaiachain/kaia/crypto"
-	"github.com/kaiachain/kaia/log"
 	"github.com/kaiachain/kaia/params"
 	"github.com/stretchr/testify/assert"
 )
@@ -65,7 +64,6 @@ func testPragueForkChainConfig(forkNum *big.Int) *params.ChainConfig {
 }
 
 func TestEIP3541(t *testing.T) {
-	log.EnableLogForTest(log.LvlError, log.LvlInfo)
 
 	testCases := []struct {
 		name           string
@@ -134,7 +132,6 @@ func TestEIP3541(t *testing.T) {
 }
 
 func TestEIP170(t *testing.T) {
-	log.EnableLogForTest(log.LvlError, log.LvlInfo)
 
 	// EIP170 must work regardless of the Prague fork.
 	testCases := []struct {

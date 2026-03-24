@@ -38,7 +38,6 @@ import (
 	"github.com/kaiachain/kaia/kaiax/gov"
 	"github.com/kaiachain/kaia/kaiax/gov/headergov"
 	gov_impl "github.com/kaiachain/kaia/kaiax/gov/impl"
-	"github.com/kaiachain/kaia/log"
 	"github.com/kaiachain/kaia/node/cn"
 	"github.com/kaiachain/kaia/params"
 	"github.com/stretchr/testify/assert"
@@ -47,7 +46,6 @@ import (
 
 // TestGovernance_GovModule tests GovModule and ContractGovModule
 func TestGovernance_GovModule(t *testing.T) {
-	log.EnableLogForTest(log.LvlCrit, log.LvlDebug)
 
 	config := params.MainnetChainConfig.Copy()
 	config.IstanbulCompatibleBlock = new(big.Int).SetUint64(0)

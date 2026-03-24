@@ -27,7 +27,6 @@ import (
 
 	"github.com/kaiachain/kaia/blockchain/vm"
 	"github.com/kaiachain/kaia/common"
-	"github.com/kaiachain/kaia/log"
 	"github.com/kaiachain/kaia/params"
 	"github.com/stretchr/testify/suite"
 )
@@ -254,6 +253,5 @@ func (suite *ExecutionSpecBlockTestSuite) TestExecutionSpecBlock() {
 }
 
 func TestExecutionSpecBlockTestSuite(t *testing.T) {
-	log.EnableLogForTest(log.LvlCrit, log.LvlError)
 	suite.Run(t, new(ExecutionSpecBlockTestSuite))
 }

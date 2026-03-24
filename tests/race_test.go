@@ -31,7 +31,6 @@ import (
 	"github.com/kaiachain/kaia/blockchain/state"
 	"github.com/kaiachain/kaia/blockchain/types"
 	"github.com/kaiachain/kaia/common"
-	"github.com/kaiachain/kaia/log"
 	"github.com/kaiachain/kaia/params"
 	"github.com/kaiachain/kaia/storage/database"
 )
@@ -41,7 +40,6 @@ import (
 // This race test may need multiple trials and additional flags to avoid false alarms from sha3 package.
 // For example, `go test -gcflags=all=-d=checkptr=0 -race -run TestRaceBetweenTxpoolAddAndCommitNewWork`.
 func TestRaceBetweenTxpoolAddAndCommitNewWork(t *testing.T) {
-	log.EnableLogForTest(log.LvlCrit, log.LvlTrace)
 
 	numAccounts := 2
 	fullNode, node, validator, chainId, workspace := newBlockchain(t, nil, nil)
@@ -101,7 +99,6 @@ func TestRaceBetweenTxpoolAddAndCommitNewWork(t *testing.T) {
 // TestRaceAsMessageWithAccountPickerForFeePayer tests calling AsMessageWithAccountPicker of a fee delegated transaction
 // where a fee payer may be inserted wrongly due to concurrent issue.
 func TestRaceAsMessageWithAccountPickerForFeePayer(t *testing.T) {
-	log.EnableLogForTest(log.LvlCrit, log.LvlTrace)
 
 	// Configure and generate a sample block chain
 	var (
@@ -130,7 +127,7 @@ func TestRaceAsMessageWithAccountPickerForFeePayer(t *testing.T) {
 		tx, _ := genFeeDelegatedChainDataAnchoring(t, signer, from, nil, feePayer, big.NewInt(1234))
 		for i := 0; i < 2; i++ {
 			go func() {
-					stateDB, err := state.New(genesis.Root(), state.NewDatabase(gendb), nil, nil)
+				stateDB, err := state.New(genesis.Root(), state.NewDatabase(gendb), nil, nil)
 				if err != nil {
 					panic(err)
 				}

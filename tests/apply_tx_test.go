@@ -36,7 +36,6 @@ import (
 	"github.com/kaiachain/kaia/common"
 	"github.com/kaiachain/kaia/common/profile"
 	"github.com/kaiachain/kaia/crypto"
-	"github.com/kaiachain/kaia/log"
 	"github.com/kaiachain/kaia/params"
 	"github.com/stretchr/testify/assert"
 )
@@ -259,7 +258,6 @@ func BenchmarkTxPerformanceNewRoleBasedMultisig3(b *testing.B) {
 }
 
 func benchmarkTxPerformanceCompatible(b *testing.B, genTx genTx) {
-	log.EnableLogForTest(log.LvlCrit, log.LvlTrace)
 
 	// Initialize blockchain
 	bcdata, err := NewBCData(6, 4)
@@ -346,7 +344,6 @@ func benchmarkTxPerformanceCompatible(b *testing.B, genTx genTx) {
 }
 
 func benchmarkTxPerformanceSmartContractExecution(b *testing.B, genTx genTx) {
-	log.EnableLogForTest(log.LvlCrit, log.LvlTrace)
 	prof := profile.NewProfiler()
 
 	// Initialize blockchain
@@ -476,7 +473,6 @@ func benchmarkTxPerformanceSmartContractExecution(b *testing.B, genTx genTx) {
 }
 
 func benchmarkTxPerformanceNew(b *testing.B, genTx genTx, sender *TestAccountType) {
-	log.EnableLogForTest(log.LvlCrit, log.LvlTrace)
 	prof := profile.NewProfiler()
 
 	// Initialize blockchain

@@ -34,7 +34,6 @@ import (
 	testcontract "github.com/kaiachain/kaia/contracts/contracts/testing/system_contracts"
 	"github.com/kaiachain/kaia/crypto"
 	"github.com/kaiachain/kaia/crypto/bls"
-	"github.com/kaiachain/kaia/log"
 	"github.com/kaiachain/kaia/params"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -42,7 +41,6 @@ import (
 
 // Test full Randao hardfork scenario under the condition similar to the Mainnet network.
 func TestRandao_Deploy(t *testing.T) {
-	log.EnableLogForTest(log.LvlCrit, log.LvlWarn)
 
 	// Test parameters
 	var (
@@ -93,7 +91,6 @@ func TestRandao_Deploy(t *testing.T) {
 
 // Test Randao hardfork scenario where it's enabled from the genesis
 func TestRandao_Genesis(t *testing.T) {
-	log.EnableLogForTest(log.LvlCrit, log.LvlWarn)
 
 	// Test parameters
 	var (

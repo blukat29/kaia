@@ -8,7 +8,6 @@ import (
 	"github.com/kaiachain/kaia/common"
 	"github.com/kaiachain/kaia/kaiax/gov"
 	gov_impl "github.com/kaiachain/kaia/kaiax/gov/impl"
-	"github.com/kaiachain/kaia/log"
 	"github.com/kaiachain/kaia/params"
 	"github.com/kaiachain/kaia/storage/database"
 	"github.com/stretchr/testify/assert"
@@ -17,7 +16,6 @@ import (
 
 // TestMainnetGenesisGovernance is a regression test for genesis parameters (kaia.getParams(0)).
 func TestMainnetGenesisGovernance(t *testing.T) {
-	log.EnableLogForTest(log.LvlCrit, log.LvlError)
 	config := params.MainnetChainConfig.Copy()
 	genesis := blockchain.DefaultTestGenesisBlock()
 	genesis.Config = config

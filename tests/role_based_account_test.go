@@ -31,7 +31,6 @@ import (
 	"github.com/kaiachain/kaia/common/profile"
 	"github.com/kaiachain/kaia/crypto"
 	"github.com/kaiachain/kaia/kerrors"
-	"github.com/kaiachain/kaia/log"
 	"github.com/kaiachain/kaia/params"
 	"github.com/stretchr/testify/assert"
 )
@@ -63,7 +62,6 @@ func genTestKeys(len int) []*ecdsa.PrivateKey {
 // 4. Update tx key using colin.UpdateKeys.
 // 5. Transfer value using updated colin.TxKeys.
 func TestRoleBasedAccount(t *testing.T) {
-	log.EnableLogForTest(log.LvlCrit, log.LvlTrace)
 	prof := profile.NewProfiler()
 
 	// Initialize blockchain
@@ -287,7 +285,6 @@ func TestRoleBasedAccount(t *testing.T) {
 // 2. Update key to RoleBasedKey. If anyone is AccountKeyNil, it should fail. First nil key.
 // 3. Update key to RoleBasedKey. If anyone is AccountKeyNil, it should fail. Second nil key.
 func TestAccountUpdateRoleBasedNil(t *testing.T) {
-	log.EnableLogForTest(log.LvlCrit, log.LvlTrace)
 	prof := profile.NewProfiler()
 
 	// Initialize blockchain
@@ -416,7 +413,6 @@ func TestAccountUpdateRoleBasedNil(t *testing.T) {
 // 5. Test RoleTransfer of the RoleBasedKey with invalid signature
 // 6. Test RoleTransfer of the RoleBasedKey with invalid number of signatures
 func TestAccountUpdateRoleBasedLegacy(t *testing.T) {
-	log.EnableLogForTest(log.LvlCrit, log.LvlTrace)
 	prof := profile.NewProfiler()
 
 	// Initialize blockchain
@@ -627,7 +623,6 @@ func TestAccountUpdateRoleBasedLegacy(t *testing.T) {
 // 2. Update key to RoleBasedKey with four roles. It should fail.
 // 3. Update key to RoleBasedKey with zero role. It should fail.
 func TestAccountUpdateRoleBasedWrongLength(t *testing.T) {
-	log.EnableLogForTest(log.LvlCrit, log.LvlTrace)
 	prof := profile.NewProfiler()
 
 	// Initialize blockchain
@@ -752,7 +747,6 @@ func TestAccountUpdateRoleBasedWrongLength(t *testing.T) {
 // 5. Inserting a tx signed by old key into the pool. It should fail.
 // 6. Inserting a tx signed by new key into the pool. It should pass.
 func TestAccountUpdateRoleBasedTransition(t *testing.T) {
-	log.EnableLogForTest(log.LvlCrit, log.LvlTrace)
 	prof := profile.NewProfiler()
 
 	// Initialize blockchain
@@ -936,7 +930,6 @@ func TestAccountUpdateRoleBasedTransition(t *testing.T) {
 // 2. Update to newKey using TxTypeAccountUpdate
 // 3. Update back to oldKey using TxTypeAccountUpdate
 func TestAccountUpdateToRoleBasedToPub(t *testing.T) {
-	log.EnableLogForTest(log.LvlCrit, log.LvlTrace)
 	prof := profile.NewProfiler()
 
 	// Initialize blockchain

@@ -38,7 +38,6 @@ import (
 	"github.com/kaiachain/kaia/common/hexutil"
 	"github.com/kaiachain/kaia/common/profile"
 	"github.com/kaiachain/kaia/crypto"
-	"github.com/kaiachain/kaia/log"
 	"github.com/kaiachain/kaia/networks/rpc"
 	"github.com/kaiachain/kaia/params"
 	"github.com/kaiachain/kaia/rlp"
@@ -71,7 +70,6 @@ import (
 // - TxTypeFeeDelegatedCancelWithRatio
 // - TxTypeChainDataAnchoring
 func BenchmarkRPCOutput(t *testing.B) {
-	log.EnableLogForTest(log.LvlCrit, log.LvlTrace)
 	prof := profile.NewProfiler()
 
 	// Initialize blockchain

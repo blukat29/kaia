@@ -39,7 +39,6 @@ import (
 	istanbulBackend "github.com/kaiachain/kaia/consensus/istanbul/backend"
 	"github.com/kaiachain/kaia/crypto"
 	gov_impl "github.com/kaiachain/kaia/kaiax/gov/impl"
-	"github.com/kaiachain/kaia/log"
 	"github.com/kaiachain/kaia/params"
 	"github.com/kaiachain/kaia/storage/database"
 	"github.com/kaiachain/kaia/storage/statedb"
@@ -498,7 +497,6 @@ func defaultCacheConfig() *blockchain.CacheConfig {
 
 // setUpTest sets up test data directory, verbosity and profile file.
 func setUpTest(tc *preGeneratedTC) (string, *os.File, error) {
-	log.EnableLogForTest(log.LvlCrit, log.LvlTrace)
 
 	testDataDir, err := setupTestDir(tc.originalDataDir, tc.isGenerateTest)
 	if err != nil {

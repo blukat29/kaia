@@ -31,7 +31,6 @@ import (
 	"github.com/kaiachain/kaia/blockchain"
 	"github.com/kaiachain/kaia/blockchain/types"
 	"github.com/kaiachain/kaia/kerrors"
-	"github.com/kaiachain/kaia/log"
 	"github.com/kaiachain/kaia/params"
 	"github.com/stretchr/testify/assert"
 )
@@ -53,7 +52,6 @@ func TestTransaction(t *testing.T) {
 // TestAccountCreationDisable tries to use accountCreation tx types which is disabled now.
 // The tx should be invalided in txPool and execution process.
 func TestAccountCreationDisable(t *testing.T) {
-	log.EnableLogForTest(log.LvlCrit, log.LvlTrace)
 
 	// the same with types.errUndefinedTxType
 	errUndefinedTxType := errors.New("undefined tx type")
@@ -120,7 +118,6 @@ func TestAccountCreationDisable(t *testing.T) {
 // 1. If the humanReadable field of an tx is 'true', it should fail.
 // 2. If the recipient field of an tx is not nil, it should fail.
 func TestContractDeployWithDisabledAddress(t *testing.T) {
-	log.EnableLogForTest(log.LvlCrit, log.LvlTrace)
 
 	testTxTypes := []types.TxType{
 		types.TxTypeSmartContractDeploy,

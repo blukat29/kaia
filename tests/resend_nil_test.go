@@ -28,7 +28,6 @@ import (
 
 	"github.com/kaiachain/kaia/blockchain/types"
 	"github.com/kaiachain/kaia/common/profile"
-	"github.com/kaiachain/kaia/log"
 	"github.com/kaiachain/kaia/params"
 )
 
@@ -44,7 +43,6 @@ import (
 // To execute this,
 // $ go test -run XXX -bench BenchmarkResendNilDereference
 func BenchmarkResendNilDereference(t *testing.B) {
-	log.EnableLogForTest(log.LvlCrit, log.LvlTrace)
 	prof := profile.NewProfiler()
 
 	numTransactions := 20000

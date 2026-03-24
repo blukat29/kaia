@@ -35,7 +35,6 @@ import (
 	"github.com/kaiachain/kaia/common/profile"
 	"github.com/kaiachain/kaia/crypto"
 	"github.com/kaiachain/kaia/crypto/kzg4844"
-	"github.com/kaiachain/kaia/log"
 	"github.com/kaiachain/kaia/params"
 	"github.com/stretchr/testify/assert"
 )
@@ -103,7 +102,6 @@ func TestGasCalculation(t *testing.T) {
 		{"RoleBasedWithMultiSig", genRoleBasedWithMultiSigAccount(t)},
 	}
 
-	log.EnableLogForTest(log.LvlCrit, log.LvlTrace)
 	prof := profile.NewProfiler()
 
 	// Initialize blockchain

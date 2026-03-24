@@ -35,7 +35,6 @@ import (
 	"github.com/kaiachain/kaia/common/profile"
 	"github.com/kaiachain/kaia/crypto"
 	"github.com/kaiachain/kaia/kerrors"
-	"github.com/kaiachain/kaia/log"
 	"github.com/kaiachain/kaia/params"
 	"github.com/kaiachain/kaia/rlp"
 	"github.com/stretchr/testify/assert"
@@ -377,7 +376,6 @@ func testValueTransfer(t *testing.T, opt *testOption) {
 }
 
 func TestValueTransferRing(t *testing.T) {
-	log.EnableLogForTest(log.LvlCrit, log.LvlTrace)
 	prof := profile.NewProfiler()
 
 	numTransactions := 20000
@@ -437,7 +435,6 @@ func TestValueTransferRing(t *testing.T) {
 // case 2. FeeDelegatedAccountUpdate
 // case 3. FeeDelegatedAccountUpdateWithRatio
 func TestWronglyEncodedAccountKey(t *testing.T) {
-	log.EnableLogForTest(log.LvlCrit, log.LvlTrace)
 	prof := profile.NewProfiler()
 
 	numTransactions := 20000
@@ -648,7 +645,6 @@ func TestWronglyEncodedAccountKey(t *testing.T) {
 // while creating a block. As a disclaimer, this function does not tell that Kaia
 // can perform this amount of TPS in real environment.
 func BenchmarkValueTransfer(t *testing.B) {
-	log.EnableLogForTest(log.LvlCrit, log.LvlTrace)
 	prof := profile.NewProfiler()
 	opt := testOption{t.N, 2000, 4, 1, []byte{}, makeTransactionsToRandom}
 
@@ -702,7 +698,6 @@ func BenchmarkValueTransfer(t *testing.B) {
 // while creating a block. As a disclaimer, this function does not tell that Kaia
 // can perform this amount of TPS in real environment.
 func BenchmarkNewValueTransfer(t *testing.B) {
-	log.EnableLogForTest(log.LvlCrit, log.LvlTrace)
 	prof := profile.NewProfiler()
 	opt := testOption{t.N, 2000, 4, 1, []byte{}, makeNewTransactionsToRandom}
 

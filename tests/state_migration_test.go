@@ -27,7 +27,6 @@ import (
 	"time"
 
 	"github.com/kaiachain/kaia/common"
-	"github.com/kaiachain/kaia/log"
 	"github.com/kaiachain/kaia/node"
 	"github.com/kaiachain/kaia/node/cn"
 	"github.com/kaiachain/kaia/storage/database"
@@ -37,7 +36,6 @@ import (
 
 // continuous occurrence of state trie migration and node restart must success
 func TestMigration_ContinuousRestartAndMigration(t *testing.T) {
-	log.EnableLogForTest(log.LvlCrit, log.LvlTrace)
 
 	fullNode, node, validator, chainID, workspace, richAccount, _, _ := newSimpleBlockchain(t, 10)
 	defer os.RemoveAll(workspace)
@@ -72,7 +70,6 @@ func TestMigration_ContinuousRestartAndMigration(t *testing.T) {
 
 // state trie DB should be determined by the values of miscDB
 func TestMigration_StartMigrationByMiscDB(t *testing.T) {
-	log.EnableLogForTest(log.LvlCrit, log.LvlTrace)
 
 	fullNode, cn, validator, _, workspace, _, _, _ := newSimpleBlockchain(t, 10)
 	defer os.RemoveAll(workspace)
@@ -141,7 +138,6 @@ func checkIfStoredInDB(t *testing.T, numShard uint, dir string, entries map[stri
 
 // if migration status is set on miscDB and a node is restarted, migration should start
 func TestMigration_StartMigrationByMiscDBOnRestart(t *testing.T) {
-	log.EnableLogForTest(log.LvlCrit, log.LvlTrace)
 
 	fullNode, node, validator, chainID, workspace, richAccount, _, _ := newSimpleBlockchain(t, 10)
 	defer os.RemoveAll(workspace)
@@ -188,7 +184,6 @@ func TestMigration_StartMigrationByMiscDBOnRestart(t *testing.T) {
 
 // if old db path is set on miscDB and a node is restarted, old db should be removed
 func TestMigration_RemoveOldDBOnRestart(t *testing.T) {
-	log.EnableLogForTest(log.LvlCrit, log.LvlTrace)
 
 	fullNode, node, validator, _, workspace, _, _, _ := newSimpleBlockchain(t, 1)
 	defer os.RemoveAll(workspace)

@@ -33,7 +33,6 @@ import (
 	"github.com/kaiachain/kaia/common/compiler"
 	"github.com/kaiachain/kaia/common/profile"
 	"github.com/kaiachain/kaia/crypto"
-	"github.com/kaiachain/kaia/log"
 	"github.com/kaiachain/kaia/params"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -46,7 +45,6 @@ type BenchmarkEvmOpTestCase struct {
 }
 
 func BenchmarkEvmOp(t *testing.B) {
-	log.EnableLogForTest(log.LvlCrit, log.LvlTrace)
 	prof := profile.NewProfiler()
 
 	// Initialize blockchain

@@ -36,7 +36,6 @@ import (
 	"github.com/kaiachain/kaia/common/profile"
 	"github.com/kaiachain/kaia/crypto"
 	"github.com/kaiachain/kaia/kerrors"
-	"github.com/kaiachain/kaia/log"
 	"github.com/kaiachain/kaia/params"
 	"github.com/kaiachain/kaia/rlp"
 	"github.com/stretchr/testify/assert"
@@ -111,7 +110,6 @@ func genMapForTxTypes(from TestAccount, to TestAccount, txType types.TxType) (tx
 
 // TestValidationPoolInsertEthTxType generates invalid txs which will be invalidated during txPool insert process.
 func TestValidationPoolInsertEthTxType(t *testing.T) {
-	log.EnableLogForTest(log.LvlCrit, log.LvlTrace)
 
 	testTxTypes := []testTxType{}
 	for i := types.TxTypeLegacyTransaction; i < types.TxTypeEthereumLast; i++ {
@@ -237,7 +235,6 @@ func TestValidationPoolInsertEthTxType(t *testing.T) {
 }
 
 func TestValidationPoolInsertMagma(t *testing.T) {
-	log.EnableLogForTest(log.LvlCrit, log.LvlTrace)
 
 	testTxTypes := []testTxType{}
 	for i := types.TxTypeLegacyTransaction; i < types.TxTypeEthereumLast; i++ {
@@ -363,7 +360,6 @@ func TestValidationPoolInsertMagma(t *testing.T) {
 }
 
 func TestValidationPoolInsertPrague(t *testing.T) {
-	log.EnableLogForTest(log.LvlCrit, log.LvlTrace)
 
 	testTxTypes := []testTxType{}
 	for i := types.TxTypeLegacyTransaction; i < types.TxTypeEthereumLast; i++ {
@@ -524,7 +520,6 @@ func TestValidationPoolInsertPrague(t *testing.T) {
 
 // TestValidationBlockTx generates invalid txs which will be invalidated during block insert process.
 func TestValidationBlockTx(t *testing.T) {
-	log.EnableLogForTest(log.LvlCrit, log.LvlTrace)
 
 	testTxTypes := []testTxType{}
 	for i := types.TxTypeLegacyTransaction; i < types.TxTypeEthereumLast; i++ {
@@ -1425,7 +1420,6 @@ func TestInvalidBalance(t *testing.T) {
 
 // TestInvalidBalanceBlockTx generates invalid txs which don't have enough KAIA, and will be invalidated during block insert process.
 func TestInvalidBalanceBlockTx(t *testing.T) {
-	log.EnableLogForTest(log.LvlCrit, log.LvlTrace)
 
 	testTxTypes := []testTxType{}
 	for i := types.TxTypeLegacyTransaction; i < types.TxTypeEthereumLast; i++ {

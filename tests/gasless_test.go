@@ -41,7 +41,6 @@ import (
 	testingContracts "github.com/kaiachain/kaia/contracts/contracts/testing/system_contracts"
 	testingGaslessContracts "github.com/kaiachain/kaia/contracts/contracts/testing/system_contracts/gasless"
 	gaslessImpl "github.com/kaiachain/kaia/kaiax/gasless/impl"
-	"github.com/kaiachain/kaia/log"
 	"github.com/kaiachain/kaia/networks/rpc"
 	"github.com/kaiachain/kaia/params"
 	"github.com/stretchr/testify/assert"
@@ -54,7 +53,6 @@ var (
 )
 
 func TestGasless(t *testing.T) {
-	log.EnableLogForTest(log.LvlError, log.LvlError)
 
 	// prepare chain configuration
 	config := params.MainnetChainConfig.Copy()

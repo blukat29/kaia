@@ -33,7 +33,6 @@ import (
 	"github.com/kaiachain/kaia/consensus/istanbul"
 	"github.com/kaiachain/kaia/crypto"
 	"github.com/kaiachain/kaia/crypto/bls"
-	"github.com/kaiachain/kaia/log"
 	"github.com/kaiachain/kaia/networks/p2p"
 	"github.com/kaiachain/kaia/node"
 	"github.com/kaiachain/kaia/node/cn"
@@ -47,7 +46,6 @@ import (
 
 // TestSimpleBlockchain
 func TestSimpleBlockchain(t *testing.T) {
-	log.EnableLogForTest(log.LvlCrit, log.LvlTrace)
 
 	numAccounts := 12
 	fullNode, node, validator, chainId, workspace := newBlockchain(t, nil, nil)
