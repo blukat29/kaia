@@ -4,6 +4,8 @@ import (
 	"flag"
 	"io"
 	"os"
+	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/kaiachain/kaia/log/term"
@@ -19,8 +21,7 @@ import (
 // `verboseLvl` is used if `go test -v` flag is given
 func EnableLogForTest(normalLvl, verboseLvl Lvl) {
 	lvl := Lvl(normalLvl)
-	// testing.Verbose() panics in the init() function. flag.Parsed() prevents that.
-	if flag.Parsed() && testing.Verbose() {
+	if isTestVerbose() {
 		lvl = Lvl(verboseLvl)
 	}
 
@@ -36,4 +37,40 @@ func EnableLogForTest(normalLvl, verboseLvl Lvl) {
 	glogger.Vmodule("")
 	glogger.BacktraceAt("")
 	Root().SetHandler(glogger)
+}
+
+func isTestVerbose() bool {
+	// testing.Verbose panics before flags are parsed.
+	if flag.Parsed() {
+		return testing.Verbose()
+	}
+	return hasTruthyTestVerboseArg(os.Args[1:])
+}
+
+func hasTruthyTestVerboseArg(args []string) bool {
+	for _, arg := range args {
+		switch {
+		case arg == "-test.v", arg == "--test.v", arg == "-v", arg == "--v":
+			return true
+		case strings.HasPrefix(arg, "-test.v="),
+			strings.HasPrefix(arg, "--test.v="),
+			strings.HasPrefix(arg, "-v="),
+			strings.HasPrefix(arg, "--v="):
+			if boolVal, ok := parseBoolFlagValue(arg); ok {
+				return boolVal
+			}
+		}
+	}
+	return false
+}
+
+func parseBoolFlagValue(arg string) (bool, bool) {
+	idx := strings.IndexByte(arg, '=')
+	if idx < 0 || idx+1 >= len(arg) {
+		return false, false
+	}
+	if val, err := strconv.ParseBool(arg[idx+1:]); err == nil {
+		return val, true
+	}
+	return false, false
 }
