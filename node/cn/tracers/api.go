@@ -24,6 +24,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math/big"
@@ -256,6 +257,7 @@ type TraceConfig struct {
 	Timeout       *string
 	LoggerTimeout *string
 	Reexec        *uint64
+	TracerConfig  json.RawMessage // Tracer-specific options (e.g. {"diffMode":true} for prestateTracer).
 }
 
 // StdTraceConfig holds extra parameters to standard-json trace functions.
@@ -989,9 +991,15 @@ func (api *CommonAPI) traceTx(ctx context.Context, message blockchain.Message, b
 			}
 		}
 
-		if *config.Tracer == "fastCallTracer" || *config.Tracer == "callTracer" {
+		switch *config.Tracer {
+		case "fastCallTracer", "callTracer":
 			tracer = vm.NewCallTracer()
-		} else {
+		case "prestateTracer":
+			tracer, err = vm.NewPrestateTracer(config.TracerConfig)
+			if err != nil {
+				return nil, err
+			}
+		default:
 			// Construct the JavaScript tracer to execute with
 			if tracer, err = New(*config.Tracer, new(Context), api.unsafeTrace); err != nil {
 				return nil, err
@@ -1008,6 +1016,8 @@ func (api *CommonAPI) traceTx(ctx context.Context, message blockchain.Message, b
 				case *vm.InternalTxTracer:
 					t.Stop(errors.New("execution timeout"))
 				case *vm.CallTracer:
+					t.Stop(errors.New("execution timeout"))
+				case *vm.PrestateTracer:
 					t.Stop(errors.New("execution timeout"))
 				default:
 					logger.Warn("unknown tracer type", "type", reflect.TypeOf(t).String())
@@ -1054,6 +1064,8 @@ func (api *CommonAPI) traceTx(ctx context.Context, message blockchain.Message, b
 	case *vm.InternalTxTracer:
 		return tracer.GetResult()
 	case *vm.CallTracer:
+		return tracer.GetResult()
+	case *vm.PrestateTracer:
 		return tracer.GetResult()
 
 	default:
