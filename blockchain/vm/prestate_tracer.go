@@ -72,6 +72,13 @@ type PrestateTracer struct {
 	value  *big.Int // may be nil
 	create bool
 
+	// Synthetic balance the caller (e.g. debug_traceCall) credited to a sender
+	// to bypass the EVM's balance check. The tracer subtracts this from the
+	// reconstructed pre-balance so prestate reflects the real pre-tx state, not
+	// the simulator's top-up.
+	synthAddr   common.Address
+	synthAmount *big.Int
+
 	pre       prestateState
 	post      prestateState
 	gasLimit  uint64 // tx.gasLimit, captured in CaptureTxStart
@@ -101,6 +108,18 @@ func (t *PrestateTracer) CaptureTxStart(gasLimit uint64) {
 	t.gasLimit = gasLimit
 }
 
+// SetSyntheticBalance records a synthetic balance the caller added to an
+// account before tracing (e.g. debug_traceCall topping up an underfunded
+// sender). At CaptureTxEnd the tracer will subtract this amount from the
+// reconstructed pre-balance so prestate output reflects the real pre-tx
+// state rather than the simulator's top-up.
+func (t *PrestateTracer) SetSyntheticBalance(addr common.Address, amount *big.Int) {
+	t.synthAddr = addr
+	if amount != nil {
+		t.synthAmount = new(big.Int).Set(amount)
+	}
+}
+
 // CaptureTxEnd fires after gas refund and the fee transfer to coinbase/rewardbase,
 // so the StateDB is in its final post-tx state. We reconstruct the sender's, the
 // recipient's, and the fee recipient's pre-tx balances by reversing the deltas.
@@ -115,23 +134,39 @@ func (t *PrestateTracer) CaptureTxEnd(restGas uint64) {
 		value = new(big.Int)
 	}
 
-	// Sender: post-tx balance had `value + gasCost` debited (refund already folded
-	// into restGas). Add them back to recover pre-tx balance. Nonce was incremented
-	// once for this tx (in TxInternalDataLegacy.Execute for CALL; in vm.Create for
+	// Sender: read the post-tx StateDB directly (NOT via lazy lookupAccount,
+	// which may have stored a mid-execution snapshot if an opcode such as
+	// BALANCE(from) touched the sender during execution). Reverse the
+	// value + gasCost debit to recover the pre-tx balance, then back out any
+	// synthetic credit added by debug_traceCall. Nonce was incremented once
+	// for this tx (in TxInternalDataLegacy.Execute for CALL; in vm.Create for
 	// top-level CREATE), so subtract one.
-	t.lookupAccount(t.from)
-	fromAcc := t.pre[t.from]
-	fromAcc.Balance = new(big.Int).Add(fromAcc.Balance, new(big.Int).Add(value, gasCost))
-	if fromAcc.Nonce > 0 {
-		fromAcc.Nonce--
+	if _, ok := t.pre[t.from]; !ok {
+		t.pre[t.from] = &PrestateAccount{Storage: make(map[common.Hash]common.Hash)}
 	}
+	fromAcc := t.pre[t.from]
+	postFromBal := t.env.StateDB.GetBalance(t.from)
+	postFromNonce := t.env.StateDB.GetNonce(t.from)
+	fromAcc.Balance = new(big.Int).Add(postFromBal, new(big.Int).Add(value, gasCost))
+	if t.synthAmount != nil && t.from == t.synthAddr {
+		fromAcc.Balance.Sub(fromAcc.Balance, t.synthAmount)
+	}
+	if postFromNonce > 0 {
+		fromAcc.Nonce = postFromNonce - 1
+	}
+	fromAcc.Code = t.env.StateDB.GetCode(t.from)
 
-	// Recipient: only meaningful for CALL (no pre-state for a contract created in
-	// this tx). Reverse the value credit.
+	// Recipient: only meaningful for CALL (no pre-state for a contract created
+	// in this tx). Force a post-tx read for the same reason as the sender.
 	if !t.create {
-		t.lookupAccount(t.to)
+		if _, ok := t.pre[t.to]; !ok {
+			t.pre[t.to] = &PrestateAccount{Storage: make(map[common.Hash]common.Hash)}
+		}
 		toAcc := t.pre[t.to]
-		toAcc.Balance = new(big.Int).Sub(toAcc.Balance, value)
+		postToBal := t.env.StateDB.GetBalance(t.to)
+		toAcc.Balance = new(big.Int).Sub(postToBal, value)
+		toAcc.Nonce = t.env.StateDB.GetNonce(t.to)
+		toAcc.Code = t.env.StateDB.GetCode(t.to)
 	}
 
 	// Note: we deliberately do not snapshot the fee recipient (Coinbase /
@@ -166,10 +201,14 @@ func (t *PrestateTracer) CaptureTxEnd(restGas uint64) {
 
 	// diffMode: walk pre and build post by comparing against the post-tx StateDB.
 	for addr, preAcc := range t.pre {
-		// If the account no longer exists, it was destroyed by SELFDESTRUCT (and
-		// the destruction was not rolled back, EIP-6780-skipped, or static-aborted).
-		// Drop it from the diff entirely.
-		if !t.env.StateDB.Exist(addr) {
+		// If the account was destroyed by SELFDESTRUCT (and the destruction was
+		// not rolled back), drop it from the diff entirely. Use HasSelfDestructed
+		// rather than !Exist: StateDB.Exist returns true for selfdestructed
+		// accounts because the state object lingers until commit, and the
+		// journal-aware HasSelfDestructed correctly reports `false` for
+		// readOnly aborts, outer reverts, and EIP-6780 noops on pre-existing
+		// accounts.
+		if t.env.StateDB.HasSelfDestructed(addr) {
 			delete(t.pre, addr)
 			continue
 		}
