@@ -144,6 +144,16 @@ func (t *PrestateTracer) CaptureTxEnd(restGas uint64) {
 
 	if t.create && t.config.DiffMode {
 		t.created[t.to] = true
+		// The new contract has no real prestate, but we must seed t.pre so the
+		// diff loop visits the address and produces a `post` entry. The pruning
+		// pass at the end of CaptureTxEnd will then remove this empty entry
+		// from `pre`, leaving the contract present only in `post`.
+		if _, ok := t.pre[t.to]; !ok {
+			t.pre[t.to] = &PrestateAccount{
+				Balance: new(big.Int),
+				Storage: make(map[common.Hash]common.Hash),
+			}
+		}
 	}
 
 	if !t.config.DiffMode {
