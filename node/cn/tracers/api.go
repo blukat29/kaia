@@ -970,8 +970,15 @@ func (api *CommonAPI) TraceCall(ctx context.Context, args kaiaapi.CallArgs, bloc
 		return nil, err
 	}
 
-	// Add gas fee to sender for estimating gasLimit/computing cost or calling a function by insufficient balance sender.
-	statedb.AddBalance(msg.ValidatedSender(), new(big.Int).Mul(new(big.Int).SetUint64(msg.Gas()), msg.EffectiveGasPrice(block.Header(), api.backend.ChainConfig())))
+	// Top up the sender's balance only enough to cover the gas debit, so
+	// underfunded simulations can run without the synthetic credit leaking
+	// into tracer output (e.g. prestateTracer's reconstructed pre-balance).
+	// A sender who already has enough KAIA gets no top-up at all.
+	sender := msg.ValidatedSender()
+	needed := new(big.Int).Mul(new(big.Int).SetUint64(msg.Gas()), msg.EffectiveGasPrice(block.Header(), api.backend.ChainConfig()))
+	if shortfall := new(big.Int).Sub(needed, statedb.GetBalance(sender)); shortfall.Sign() > 0 {
+		statedb.AddBalance(sender, shortfall)
+	}
 
 	txCtx := blockchain.NewEVMTxContext(msg, block.Header(), api.backend.ChainConfig())
 	blockCtx := blockchain.NewEVMBlockContext(block.Header(), newChainContext(ctx, api.backend), nil)
