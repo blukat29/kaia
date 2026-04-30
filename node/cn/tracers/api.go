@@ -259,6 +259,18 @@ type TraceConfig struct {
 	Reexec         *uint64
 	StateOverrides *kaiaapi.EthStateOverride // Only honored by TraceCall.
 	TracerConfig   json.RawMessage           // Tracer-specific options (e.g. {"diffMode":true} for prestateTracer).
+
+	// syntheticBalance, if set, records a balance top-up the caller added to
+	// the sender before tracing (debug_traceCall does this for underfunded
+	// senders). traceTx forwards it to tracers that care, so they can
+	// distinguish synthetic credit from real prestate. Not serialized over
+	// JSON-RPC; set programmatically by TraceCall.
+	syntheticBalance *syntheticBalance
+}
+
+type syntheticBalance struct {
+	addr   common.Address
+	amount *big.Int
 }
 
 // StdTraceConfig holds extra parameters to standard-json trace functions.
@@ -971,13 +983,17 @@ func (api *CommonAPI) TraceCall(ctx context.Context, args kaiaapi.CallArgs, bloc
 	}
 
 	// Top up the sender's balance only enough to cover the gas debit, so
-	// underfunded simulations can run without the synthetic credit leaking
-	// into tracer output (e.g. prestateTracer's reconstructed pre-balance).
-	// A sender who already has enough KAIA gets no top-up at all.
+	// underfunded simulations can run. Track the top-up amount on the trace
+	// config so prestate-style tracers can subtract it during reconstruction
+	// instead of mistaking it for real pre-tx balance.
 	sender := msg.ValidatedSender()
 	needed := new(big.Int).Mul(new(big.Int).SetUint64(msg.Gas()), msg.EffectiveGasPrice(block.Header(), api.backend.ChainConfig()))
 	if shortfall := new(big.Int).Sub(needed, statedb.GetBalance(sender)); shortfall.Sign() > 0 {
 		statedb.AddBalance(sender, shortfall)
+		if config == nil {
+			config = &TraceConfig{}
+		}
+		config.syntheticBalance = &syntheticBalance{addr: sender, amount: shortfall}
 	}
 
 	txCtx := blockchain.NewEVMTxContext(msg, block.Header(), api.backend.ChainConfig())
@@ -1009,10 +1025,14 @@ func (api *CommonAPI) traceTx(ctx context.Context, message blockchain.Message, b
 		case "fastCallTracer", "callTracer":
 			tracer = vm.NewCallTracer()
 		case "prestateTracer":
-			tracer, err = vm.NewPrestateTracer(config.TracerConfig)
+			pt, err := vm.NewPrestateTracer(config.TracerConfig)
 			if err != nil {
 				return nil, err
 			}
+			if config.syntheticBalance != nil {
+				pt.SetSyntheticBalance(config.syntheticBalance.addr, config.syntheticBalance.amount)
+			}
+			tracer = pt
 		default:
 			// Construct the JavaScript tracer to execute with
 			if tracer, err = New(*config.Tracer, new(Context), api.unsafeTrace); err != nil {
