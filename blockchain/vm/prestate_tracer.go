@@ -16,6 +16,12 @@
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
 //
 // This file is derived from eth/tracers/native/prestate.go (go-ethereum 5d52a35).
+// Pre/post reconstruction is moved to CaptureTxEnd because Kaia fires
+// CaptureStart earlier in vm.Call/Create than upstream geth: at that hook
+// the recipient credit, top-level value transfer, and (for CREATE) the
+// caller nonce++ have not yet been applied. Reading the post-tx StateDB and
+// reversing gasUsed*gasPrice + value yields correct pre-state without
+// having to track which mutations Kaia has or hasn't done at hook time.
 
 package vm
 
@@ -57,17 +63,22 @@ type PrestateTracerConfig struct {
 // PrestateTracer records the prestate (and optionally the post-tx diff) of all
 // accounts and storage slots touched during a transaction.
 type PrestateTracer struct {
-	env       *EVM
+	env *EVM
+
+	// Captured at CaptureStart — actual pre/post reconstruction is deferred to
+	// CaptureTxEnd, where the StateDB has its final post-tx state.
+	from   common.Address
+	to     common.Address
+	value  *big.Int // may be nil
+	create bool
+
 	pre       prestateState
 	post      prestateState
-	create    bool
-	to        common.Address
 	gasLimit  uint64 // tx.gasLimit, captured in CaptureTxStart
 	config    PrestateTracerConfig
 	interrupt atomic.Bool
 	reason    error
 	created   map[common.Address]bool
-	deleted   map[common.Address]bool
 }
 
 // NewPrestateTracer constructs a PrestateTracer. cfg may be nil.
@@ -83,7 +94,6 @@ func NewPrestateTracer(cfg json.RawMessage) (*PrestateTracer, error) {
 		post:    prestateState{},
 		config:  config,
 		created: make(map[common.Address]bool),
-		deleted: make(map[common.Address]bool),
 	}, nil
 }
 
@@ -91,56 +101,111 @@ func (t *PrestateTracer) CaptureTxStart(gasLimit uint64) {
 	t.gasLimit = gasLimit
 }
 
+// CaptureTxEnd fires after gas refund and the fee transfer to coinbase/rewardbase,
+// so the StateDB is in its final post-tx state. We reconstruct the sender's, the
+// recipient's, and the fee recipient's pre-tx balances by reversing the deltas.
 func (t *PrestateTracer) CaptureTxEnd(restGas uint64) {
+	if t.env == nil {
+		return // CaptureStart was never called (e.g. malformed tx)
+	}
+	gasUsed := new(big.Int).SetUint64(t.gasLimit - restGas)
+	gasCost := new(big.Int).Mul(gasUsed, t.env.TxContext.GasPrice)
+	value := t.value
+	if value == nil {
+		value = new(big.Int)
+	}
+
+	// Sender: post-tx balance had `value + gasCost` debited (refund already folded
+	// into restGas). Add them back to recover pre-tx balance. Nonce was incremented
+	// once for this tx (in TxInternalDataLegacy.Execute for CALL; in vm.Create for
+	// top-level CREATE), so subtract one.
+	t.lookupAccount(t.from)
+	fromAcc := t.pre[t.from]
+	fromAcc.Balance = new(big.Int).Add(fromAcc.Balance, new(big.Int).Add(value, gasCost))
+	if fromAcc.Nonce > 0 {
+		fromAcc.Nonce--
+	}
+
+	// Recipient: only meaningful for CALL (no pre-state for a contract created in
+	// this tx). Reverse the value credit.
+	if !t.create {
+		t.lookupAccount(t.to)
+		toAcc := t.pre[t.to]
+		toAcc.Balance = new(big.Int).Sub(toAcc.Balance, value)
+	}
+
+	// Note: we deliberately do not snapshot the fee recipient (Coinbase /
+	// Rewardbase) here. By the time CaptureTxEnd runs, the StateDB has already
+	// credited gasUsed*gasPrice to that account, and we have no way to read the
+	// pre-tx balance retroactively. The JS prestate tracer has the same gap;
+	// users who need the proposer's prestate can query eth_getBalance at the
+	// parent block. In diffMode the fee recipient still appears in `post` if
+	// the contract execution touched it.
+
+	if t.create && t.config.DiffMode {
+		t.created[t.to] = true
+	}
+
 	if !t.config.DiffMode {
+		if t.create {
+			// In non-diff mode, the freshly-created contract has no useful prestate.
+			delete(t.pre, t.to)
+		}
 		return
 	}
 
-	for addr, state := range t.pre {
-		// Deleted accounts are pruned from the diff entirely.
-		if _, ok := t.deleted[addr]; ok {
+	// diffMode: walk pre and build post by comparing against the post-tx StateDB.
+	for addr, preAcc := range t.pre {
+		// If the account no longer exists, it was destroyed by SELFDESTRUCT (and
+		// the destruction was not rolled back, EIP-6780-skipped, or static-aborted).
+		// Drop it from the diff entirely.
+		if !t.env.StateDB.Exist(addr) {
+			delete(t.pre, addr)
 			continue
 		}
+
 		modified := false
-		postAccount := &PrestateAccount{Storage: make(map[common.Hash]common.Hash)}
+		postAcc := &PrestateAccount{Storage: make(map[common.Hash]common.Hash)}
 		newBalance := t.env.StateDB.GetBalance(addr)
 		newNonce := t.env.StateDB.GetNonce(addr)
 		newCode := t.env.StateDB.GetCode(addr)
 
-		if newBalance.Cmp(t.pre[addr].Balance) != 0 {
+		if newBalance.Cmp(preAcc.Balance) != 0 {
 			modified = true
-			postAccount.Balance = newBalance
+			postAcc.Balance = newBalance
 		}
-		if newNonce != t.pre[addr].Nonce {
+		if newNonce != preAcc.Nonce {
 			modified = true
-			postAccount.Nonce = newNonce
+			postAcc.Nonce = newNonce
 		}
-		if !bytes.Equal(newCode, t.pre[addr].Code) {
+		if !bytes.Equal(newCode, preAcc.Code) {
 			modified = true
-			postAccount.Code = newCode
+			postAcc.Code = newCode
 		}
 
-		for key, val := range state.Storage {
+		for key, val := range preAcc.Storage {
 			// Drop empty pre-slots so they don't appear in the pre output unnecessarily.
 			if val == (common.Hash{}) {
-				delete(t.pre[addr].Storage, key)
+				delete(preAcc.Storage, key)
 			}
 			newVal := t.env.StateDB.GetState(addr, key)
 			if val != newVal {
 				modified = true
 				if newVal != (common.Hash{}) {
-					postAccount.Storage[key] = newVal
+					postAcc.Storage[key] = newVal
 				}
 			}
 		}
 
 		if modified {
-			t.post[addr] = postAccount
+			t.post[addr] = postAcc
 		} else {
-			// State unchanged: drop from pre as well so the diff shows only changes.
+			// Nothing actually changed for this account — drop it from pre too,
+			// so the diff only contains real changes.
 			delete(t.pre, addr)
 		}
 	}
+
 	// Newly created contracts had no prestate worth capturing.
 	for a := range t.created {
 		if s, ok := t.pre[a]; ok && s.Balance.Sign() == 0 && len(s.Storage) == 0 && len(s.Code) == 0 {
@@ -151,45 +216,19 @@ func (t *PrestateTracer) CaptureTxEnd(restGas uint64) {
 
 func (t *PrestateTracer) CaptureStart(env *EVM, from common.Address, to common.Address, create bool, input []byte, gas uint64, value *big.Int) {
 	t.env = env
-	t.create = create
+	t.from = from
 	t.to = to
-
-	t.lookupAccount(from)
-	t.lookupAccount(to)
-	t.lookupAccount(env.Context.Coinbase)
-
-	// At this point the StateDB has already deducted (value + gasLimit*gasPrice)
-	// from sender and credited value to the recipient. Reverse those to recover
-	// the true pre-state balances.
+	t.create = create
 	if value != nil {
-		toBal := new(big.Int).Sub(t.pre[to].Balance, value)
-		t.pre[to].Balance = toBal
-
-		fromBal := new(big.Int).Set(t.pre[from].Balance)
-		gasPrice := env.TxContext.GasPrice
-		consumedGas := new(big.Int).Mul(gasPrice, new(big.Int).SetUint64(t.gasLimit))
-		fromBal.Add(fromBal, new(big.Int).Add(value, consumedGas))
-		t.pre[from].Balance = fromBal
-	} else {
-		fromBal := new(big.Int).Set(t.pre[from].Balance)
-		gasPrice := env.TxContext.GasPrice
-		consumedGas := new(big.Int).Mul(gasPrice, new(big.Int).SetUint64(t.gasLimit))
-		fromBal.Add(fromBal, consumedGas)
-		t.pre[from].Balance = fromBal
+		t.value = new(big.Int).Set(value)
 	}
-	t.pre[from].Nonce--
-
-	if create && t.config.DiffMode {
-		t.created[to] = true
-	}
+	// Don't lookup balances/nonces here. Kaia fires CaptureStart before the
+	// recipient credit, value transfer, and (for CREATE) caller nonce++ are
+	// applied — reversing those from this hook would over- or under-correct.
+	// We do the snapshot in CaptureTxEnd against the post-tx StateDB instead.
 }
 
 func (t *PrestateTracer) CaptureEnd(output []byte, gasUsed uint64, err error) {
-	if t.create && !t.config.DiffMode {
-		// Match upstream: in non-diff mode, the freshly-created contract has no
-		// useful prestate, so drop it.
-		delete(t.pre, t.to)
-	}
 }
 
 func (t *PrestateTracer) CaptureEnter(typ OpCode, from common.Address, to common.Address, input []byte, gas uint64, value *big.Int) {
@@ -208,23 +247,30 @@ func (t *PrestateTracer) CaptureState(env *EVM, pc uint64, op OpCode, gas, cost,
 	caller := scope.Contract.Address()
 	switch {
 	case stackLen >= 1 && (op == SLOAD || op == SSTORE):
+		// Ensure the contract account is captured before reading a slot — for
+		// nested frames the contract's prestate may not have been seen yet.
+		t.lookupAccount(caller)
 		slot := common.Hash(stackData[stackLen-1].Bytes32())
 		t.lookupStorage(caller, slot)
 	case stackLen >= 1 && (op == EXTCODECOPY || op == EXTCODEHASH || op == EXTCODESIZE || op == BALANCE || op == SELFDESTRUCT):
+		// SELFDESTRUCT: don't mark `caller` as deleted here — the opcode body
+		// hasn't run yet. The diffMode loop in CaptureTxEnd inspects
+		// StateDB.Exist on the post-tx state, which correctly handles
+		// readOnly aborts, outer reverts, and EIP-6780 (where non-same-tx
+		// accounts survive).
 		addr := common.Address(stackData[stackLen-1].Bytes20())
 		t.lookupAccount(addr)
-		if op == SELFDESTRUCT {
-			t.deleted[caller] = true
-		}
 	case stackLen >= 5 && (op == DELEGATECALL || op == CALL || op == STATICCALL || op == CALLCODE):
 		addr := common.Address(stackData[stackLen-2].Bytes20())
 		t.lookupAccount(addr)
 	case op == CREATE:
+		t.lookupAccount(caller)
 		nonce := t.env.StateDB.GetNonce(caller)
 		addr := crypto.CreateAddress(caller, nonce)
 		t.lookupAccount(addr)
 		t.created[addr] = true
 	case stackLen >= 4 && op == CREATE2:
+		t.lookupAccount(caller)
 		offset := stackData[stackLen-2]
 		size := stackData[stackLen-3]
 		init := scope.Memory.GetCopy(int64(offset.Uint64()), int64(size.Uint64()))
