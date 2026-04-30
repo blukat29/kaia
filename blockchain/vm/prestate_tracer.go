@@ -179,21 +179,25 @@ func (t *PrestateTracer) CaptureTxEnd(restGas uint64) {
 
 	if t.create && t.config.DiffMode {
 		t.created[t.to] = true
-		// Seed t.pre so the diff loop visits the new contract's address and
-		// produces a `post` entry. Kaia (post-Shanghai) allows CREATE to
+		// Replace any entry the lazy lookup may have stored for the new
+		// contract's address. If the constructor touched its own account
+		// (BALANCE, SSTORE, SLOAD, etc.), CaptureState already populated
+		// t.pre[t.to] from a *post-create* StateDB read — that reflects
+		// nonce=1, the post-Transfer balance, and any storage slot already
+		// written, none of which are the real prestate.
+		//
+		// Reconstruct from scratch: Kaia (post-Shanghai) allows CREATE to
 		// proceed over an address that already has balance as long as nonce,
-		// code, and storage are empty — and StateDB carries that prefund into
-		// the new contract. Reverse `value` from the post-tx balance to
-		// recover that prefund (the only field that could have nonzero
-		// prestate; nonce/code/storage were empty by definition or the
-		// creation would have collided). When the prefund is zero the diff
-		// pruning pass at the end of CaptureTxEnd drops this empty entry.
-		if _, ok := t.pre[t.to]; !ok {
-			prefund := new(big.Int).Sub(t.env.StateDB.GetBalance(t.to), value)
-			t.pre[t.to] = &PrestateAccount{
-				Balance: prefund,
-				Storage: make(map[common.Hash]common.Hash),
-			}
+		// code, and storage are empty, and the StateDB carries that prefund
+		// into the new contract. So the only field that could have nonzero
+		// prestate is balance = (post-tx balance - value); nonce/code/storage
+		// were empty pre-tx by definition or the creation would have
+		// collided. When the prefund is zero the diff pruning pass at the
+		// end of CaptureTxEnd drops this empty entry.
+		prefund := new(big.Int).Sub(t.env.StateDB.GetBalance(t.to), value)
+		t.pre[t.to] = &PrestateAccount{
+			Balance: prefund,
+			Storage: make(map[common.Hash]common.Hash),
 		}
 	}
 
