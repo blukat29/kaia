@@ -179,13 +179,19 @@ func (t *PrestateTracer) CaptureTxEnd(restGas uint64) {
 
 	if t.create && t.config.DiffMode {
 		t.created[t.to] = true
-		// The new contract has no real prestate, but we must seed t.pre so the
-		// diff loop visits the address and produces a `post` entry. The pruning
-		// pass at the end of CaptureTxEnd will then remove this empty entry
-		// from `pre`, leaving the contract present only in `post`.
+		// Seed t.pre so the diff loop visits the new contract's address and
+		// produces a `post` entry. Kaia (post-Shanghai) allows CREATE to
+		// proceed over an address that already has balance as long as nonce,
+		// code, and storage are empty — and StateDB carries that prefund into
+		// the new contract. Reverse `value` from the post-tx balance to
+		// recover that prefund (the only field that could have nonzero
+		// prestate; nonce/code/storage were empty by definition or the
+		// creation would have collided). When the prefund is zero the diff
+		// pruning pass at the end of CaptureTxEnd drops this empty entry.
 		if _, ok := t.pre[t.to]; !ok {
+			prefund := new(big.Int).Sub(t.env.StateDB.GetBalance(t.to), value)
 			t.pre[t.to] = &PrestateAccount{
-				Balance: new(big.Int),
+				Balance: prefund,
 				Storage: make(map[common.Hash]common.Hash),
 			}
 		}
